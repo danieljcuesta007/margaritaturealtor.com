@@ -95,7 +95,7 @@ export const COPY = {
       items: [
         ['Does Margarita speak Spanish?', 'Yes. Margarita is fully bilingual in English and Spanish, and can guide you through the whole process, documents included, in either language.'],
         ['Which areas does she serve?', 'Raleigh, Durham, Cary, Apex and the wider Research Triangle region of North Carolina, including Wake County.'],
-        ['Which brokerage is she with?', 'Margarita is a licensed North Carolina real estate broker (license #{license}) on the Corrales Real Estate Team with The Insight Group, at 1715 Pacific Dr., Raleigh, NC 27609.'],
+        ['Which brokerage is she with?', 'Margarita is a licensed North Carolina real estate broker (license #{license}) on the Corrales Real Estate Team with The Insight Group, at {office}.'],
         ['Can she help first-time buyers?', 'Yes. First-time buyers are a big part of her work. She explains each step, from pre-approval to closing, and connects you with lenders who fit your situation.'],
         ['How do I contact her?', 'Call or text {phone}, message her on WhatsApp, or email {email}.'],
       ],
@@ -221,7 +221,7 @@ export const COPY = {
       items: [
         ['¿Margarita habla español?', 'Sí. Margarita es completamente bilingüe en español e inglés y puede guiarle en todo el proceso, documentos incluidos, en cualquiera de los dos idiomas.'],
         ['¿En qué áreas trabaja?', 'Raleigh, Durham, Cary, Apex y toda la región del Research Triangle en Carolina del Norte, incluido el condado de Wake.'],
-        ['¿Con qué compañía trabaja?', 'Margarita es corredora de bienes raíces con licencia en Carolina del Norte (licencia #{license}) en el Corrales Real Estate Team with The Insight Group, 1715 Pacific Dr., Raleigh, NC 27609.'],
+        ['¿Con qué compañía trabaja?', 'Margarita es corredora de bienes raíces con licencia en Carolina del Norte (licencia #{license}) en el Corrales Real Estate Team with The Insight Group, {office}.'],
         ['¿Ayuda a quienes compran su primera casa?', 'Sí. Los compradores de primera vivienda son una gran parte de su trabajo. Le explica cada paso, desde la preaprobación hasta el cierre, y le conecta con prestamistas adecuados para su situación.'],
         ['¿Cómo me comunico con ella?', 'Llame o envíe un mensaje al {phone}, escríbale por WhatsApp o mande un correo a {email}.'],
       ],

@@ -51,7 +51,7 @@ export function buildGraph(identity, copy, { faq }) {
     description: identity.description[lang],
     url: `${site}/`,
     image: `${site}/${identity.images.portrait}`,
-    email: `mailto:${identity.contact.email}`,
+    email: identity.contact.email,
     telephone: identity.contact.phoneE164,
     knowsLanguage: languages,
     worksFor: { '@id': id.team },

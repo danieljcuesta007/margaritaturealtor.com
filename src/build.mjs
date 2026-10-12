@@ -6,8 +6,9 @@
  *   node src/build.mjs            -> ./dist
  *   node src/build.mjs some/dir   -> some/dir
  */
-import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync, existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync, existsSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { dirname, join, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COPY, LANGS } from './copy.mjs';
 import { renderPage, fill } from './render.mjs';
@@ -22,7 +23,34 @@ export function loadIdentity(root = ROOT) {
 /** Minify CSS just enough: comments and runs of whitespace. */
 const minCss = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,>])\s*/g, '$1').trim();
 
-export function build({ outDir = join(ROOT, 'dist'), root = ROOT, identity = loadIdentity(root), today = new Date() } = {}) {
+/**
+ * build() empties its output folder first, so refuse anything that could be
+ * the project itself or hold other work: the repo root or any parent of it, or
+ * an existing non-empty folder that is not a previous build (has no index.html,
+ * or has a .git / package.json).
+ */
+export function assertSafeOutDir(outDir, root = ROOT) {
+  const out = resolve(outDir);
+  const rel = relative(out, resolve(root));
+  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) throw new Error(`Refusing to build into ${out}: it contains the project.`);
+  if (!existsSync(out)) return;
+  const entries = readdirSync(out);
+  if (entries.length === 0) return;
+  if (entries.includes('.git') || entries.includes('package.json') || !entries.includes('index.html'))
+    throw new Error(`Refusing to empty ${out}: it does not look like a previous build.`);
+}
+
+/** Date the site content last changed (git), not the date of this build. */
+export function contentDate(root = ROOT) {
+  try {
+    const d = execFileSync('git', ['log', '-1', '--format=%cs', '--', 'data', 'src', 'assets'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(`${d}T00:00:00Z`);
+  } catch {}
+  return new Date(); // no git (e.g. a tarball): fall back to today rather than fail
+}
+
+export function build({ outDir = join(ROOT, 'dist'), root = ROOT, identity = loadIdentity(root), today = contentDate(root) } = {}) {
+  assertSafeOutDir(outDir, root);
   const css = minCss(readFileSync(join(root, 'src', 'styles.css'), 'utf8'));
   const script = { head: client.head, body: client.body };
   const site = identity.site;
@@ -39,7 +67,7 @@ export function build({ outDir = join(ROOT, 'dist'), root = ROOT, identity = loa
   for (const lang of LANGS) {
     const copy = COPY[lang];
     const other = COPY[LANGS.find((l) => l !== lang)];
-    const html = renderPage({ identity, copy, other, css, script });
+    const html = renderPage({ identity, copy, other, css, script, alternates: LANGS.map((l) => COPY[l]) });
     const file = join(outDir, copy.path, 'index.html');
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, html);
@@ -63,7 +91,7 @@ ${LANGS.map((l) => `  <url>\n    <loc>${site}${COPY[l].path}</loc>\n    <lastmod
   writeFileSync(join(outDir, '404.html'), notFound(identity, css));
   writeFileSync(
     join(outDir, '_headers'),
-    `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=2592000\n`,
+    `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=86400, stale-while-revalidate=604800\n`,
   );
   return { outDir, pages, sitemap };
 }

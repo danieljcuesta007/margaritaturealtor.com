@@ -16,10 +16,9 @@ if(btn)btn.addEventListener('click',function(){var next=isDark()?'light':'dark';
 var y=document.querySelector('[data-year]');if(y)y.textContent=new Date().getFullYear();
 var form=document.querySelector('.form');
 if(form){
-  var channel='email';
-  form.querySelectorAll('button[type=submit]').forEach(function(b){b.addEventListener('click',function(){channel=b.dataset.channel||'email'})});
   form.addEventListener('submit',function(ev){
     ev.preventDefault();
+    var channel=(ev.submitter&&ev.submitter.dataset.channel)||'email';
     var f=new FormData(form),lines=[];
     form.querySelectorAll('label').forEach(function(l){var el=l.querySelector('input,select,textarea');if(!el)return;var v=(f.get(el.name)||'').toString().trim();if(v)lines.push(l.firstChild.textContent.trim()+': '+v)});
     var text=lines.join('\\n');

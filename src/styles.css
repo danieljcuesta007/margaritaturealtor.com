@@ -183,6 +183,7 @@ section { padding: clamp(56px, 8vw, 104px) 0; }
 .foot-name { font: 500 1.3rem/1.2 var(--serif); margin-bottom: .4em; }
 .social { list-style: none; padding: 0; margin: 0; display: flex; gap: 10px; }
 .social a { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; }
+.social-txt { font-size: .62rem; font-weight: 600; text-align: center; line-height: 1.1; }
 .social a:hover { border-color: var(--ink-2); text-decoration: none; }
 .eho-row { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .eho { width: 30px; height: 30px; color: var(--ink); flex: none; }

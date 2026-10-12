@@ -8,7 +8,13 @@ export function fill(text, identity) {
   return text
     .replaceAll('{phone}', identity.contact.phoneDisplay)
     .replaceAll('{email}', identity.contact.email)
-    .replaceAll('{license}', identity.license.number);
+    .replaceAll('{license}', identity.license.number)
+    .replaceAll('{office}', officeLine(identity));
+}
+
+export function officeLine(identity) {
+  const a = identity.team.address;
+  return `${a.street}, ${a.locality}, ${a.region} ${a.postalCode}`;
 }
 
 const ICON = {
@@ -24,12 +30,12 @@ const ICON = {
   moon: '<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>',
   arrow: '<path d="M13 5l7 7-7 7-1.4-1.4 4.6-4.6H4v-2h12.2l-4.6-4.6z"/>',
 };
-const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
+const icon = (name, cls = 'i') => !ICON[name] ? '' : `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
 
 /** Equal Housing Opportunity mark, drawn rather than downloaded. */
 const EHO = `<svg class="eho" viewBox="0 0 40 40" role="img" aria-label="Equal Housing Opportunity"><path d="M20 3 2 17h4v20h28V17h4z" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="19" width="16" height="3.5" fill="currentColor"/><rect x="12" y="26" width="16" height="3.5" fill="currentColor"/></svg>`;
 
-export function renderPage({ identity, copy, other, css, script }) {
+export function renderPage({ identity, copy, other, css, script, alternates = [copy, other] }) {
   const c = copy;
   const site = identity.site;
   const url = `${site}${c.path}`;
@@ -59,8 +65,7 @@ export function renderPage({ identity, copy, other, css, script }) {
 <title>${esc(c.title)}</title>
 <meta name="description" content="${esc(c.metaDescription)}">
 <link rel="canonical" href="${url}">
-<link rel="alternate" hreflang="en-US" href="${site}/">
-<link rel="alternate" hreflang="es-US" href="${site}/es/">
+${alternates.map((a) => `<link rel="alternate" hreflang="${a.htmlLang}" href="${site}${a.path}">`).join('\n')}
 <link rel="alternate" hreflang="x-default" href="${site}/">
 <meta name="theme-color" content="#FBF8F3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#11141C" media="(prefers-color-scheme: dark)">
@@ -263,9 +268,9 @@ export function renderPage({ identity, copy, other, css, script }) {
     </div>
     <div>
       <p><a href="${tel}">${esc(identity.contact.phoneDisplay)}</a><br><a href="${mail}">${esc(identity.contact.email)}</a></p>
-      <p>${esc(c.footer.office)}: ${esc(identity.team.address.street)}, ${esc(identity.team.address.locality)}, ${esc(identity.team.address.region)} ${esc(identity.team.address.postalCode)} · <a href="tel:${identity.team.phoneE164}">${esc(identity.team.phoneDisplay)}</a></p>
+      <p>${esc(c.footer.office)}: ${esc(officeLine(identity))} · <a href="tel:${identity.team.phoneE164}">${esc(identity.team.phoneDisplay)}</a></p>
       <ul class="social">
-        ${footerProfiles.map((p) => `<li><a href="${p.url}" rel="me noopener" aria-label="${esc(p.label)}">${icon(p.id)}</a></li>`).join('\n        ')}
+        ${footerProfiles.map((p) => `<li><a href="${p.url}" rel="me noopener" aria-label="${esc(p.label)}">${ICON[p.id] ? icon(p.id) : `<span class="social-txt">${esc(p.label)}</span>`}</a></li>`).join('\n        ')}
       </ul>
     </div>
     <div class="foot-legal">

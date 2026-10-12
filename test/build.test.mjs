@@ -132,3 +132,46 @@ test('no hardcoded home directories anywhere, and no emoji in what visitors see'
     if (f.startsWith(out)) assert.doesNotMatch(s.replace(/[©®™]/g, ''), /\p{Extended_Pictographic}/u, `emoji in ${f}`);
   }
 });
+
+/** Width of a JPEG from its SOF marker (stdlib only). */
+function jpegWidth(file) {
+  const b = readFileSync(file);
+  for (let i = 2; i < b.length; ) {
+    if (b[i] !== 0xff) { i++; continue; }
+    const m = b[i + 1];
+    if (m >= 0xc0 && m <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(m)) return b.readUInt16BE(i + 7);
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  throw new Error(`no SOF in ${file}`);
+}
+
+test('every srcset width descriptor matches the real image width', () => {
+  for (const [lang, html] of Object.entries(pages)) {
+    const base = lang === 'en' ? out : join(out, 'es');
+    for (const [, set] of html.matchAll(/srcset="([^"]+)"/g)) {
+      for (const cand of set.split(',')) {
+        const [src, w] = cand.trim().split(/\s+/);
+        assert.equal(`${jpegWidth(join(base, src))}w`, w, `${src} is not ${w}`);
+      }
+    }
+  }
+});
+
+test('the office address on the page always comes from identity.json', () => {
+  const moved = structuredClone(identity);
+  moved.team.address = { ...moved.team.address, street: '9 Test Way' };
+  const dir = mkdtempSync(join(tmpdir(), 'mc-moved-'));
+  const { pages: p } = build({ outDir: dir, root: ROOT, identity: moved });
+  for (const html of Object.values(p)) {
+    assert.doesNotMatch(html, /1715 Pacific/, 'old address left behind');
+    assert.ok(visibleText(html).includes('9 Test Way'));
+  }
+});
+
+test('build refuses to empty the project folder or a folder that is not a build', async () => {
+  const { assertSafeOutDir } = await import('../src/build.mjs');
+  assert.throws(() => assertSafeOutDir(ROOT, ROOT), /contains the project/);
+  assert.throws(() => assertSafeOutDir(dirname(ROOT), ROOT), /contains the project/);
+  assert.throws(() => assertSafeOutDir(join(ROOT, 'src'), ROOT), /does not look like a previous build/);
+  assert.doesNotThrow(() => assertSafeOutDir(out, ROOT));
+});
