@@ -48,8 +48,16 @@
   },
   "links": {
     "searchHomes": "https://my.flexmls.com/MargaritaCuesta",
-    "booking": "",
-    "$comment": "booking: paste her scheduling link (Google Calendar appointment page, Cal.com or Calendly) and the intake form will hand off to it. Empty = the form collects preferred times instead."
+    "booking": {
+      "$comment": "Calendly event per intake goal (created 12 Oct 2026 in her account). The intake opens the one matching the visitor's goal, pre-filled with name and email.",
+      "discovery": "https://calendly.com/margarita-corralesre/discovery",
+      "buy": "https://calendly.com/margarita-corralesre/buyer-consultation",
+      "invest": "https://calendly.com/margarita-corralesre/buyer-consultation",
+      "sell": "https://calendly.com/margarita-corralesre/listing-consultation",
+      "both": "https://calendly.com/margarita-corralesre/listing-consultation",
+      "lease": "https://calendly.com/margarita-corralesre/rental-owners",
+      "showing": "https://calendly.com/margarita-corralesre/showing"
+    }
   },
   "profiles": [
     {
@@ -140,5 +148,18 @@
       "text": "So many good things to say, everyone there was so helpful throughout my first home buying process. My real estate agent Margarita was great, quick to answer, always communicated with me throughout the whole process! Super thankful to this team!"
     }
   ],
-  "testimonialsSource": "Margarita's listing presentation (Canva), past client testimonials. Emoji removed; one doubled word fixed."
+  "testimonialsSource": "Margarita's listing presentation (Canva), past client testimonials. Emoji removed; one doubled word fixed.",
+  "ventures": [
+    {
+      "id": "sequoia",
+      "name": "Sequoia Builders",
+      "legalName": "Sequoia Builders LLC",
+      "role": {
+        "en": "Co-owner",
+        "es": "Copropietaria"
+      },
+      "url": "https://danieljcuesta007.github.io/sequoiabuilders-preview/",
+      "$comment": "Preview URL until Sequoia has its own domain. Repo: ~/sequoiabuilders."
+    }
+  ]
 }

@@ -88,7 +88,8 @@ var form=d.querySelector('.intake');
 if(form){
   var steps=[].slice.call(form.querySelectorAll('.step')), dots=[].slice.call(form.querySelectorAll('.stepper li'));
   var back=form.querySelector('[data-back]'), next=form.querySelector('[data-next]'), submit=form.querySelector('[data-submit]');
-  var booking=form.dataset.booking, cur=0, q=new URLSearchParams(location.search);
+  var bookingMap={}; try{ bookingMap=JSON.parse(form.dataset.booking||'{}'); }catch(e){}
+  var booking=bookingMap.discovery||'', cur=0, q=new URLSearchParams(location.search);
   var listings=JSON.parse(form.querySelector('[data-listings]').textContent||'[]');
 
   if(booking){ form.querySelector('[data-no-booking]').hidden=true; form.querySelector('[data-booking-only]').hidden=false; }
@@ -159,7 +160,12 @@ if(form){
     function finish(sent){
       steps.forEach(function(s){s.hidden=true}); form.querySelector('.form-nav').hidden=true; form.querySelector('.stepper').hidden=true;
       doneEl.hidden=false; doneEl.focus();
-      if(booking){ var b=doneEl.querySelector('[data-booking-link]'); b.hidden=false; b.href=booking; }
+      if(booking){
+        // The Calendly event that fits: a showing if they came from a listing, else by goal.
+        var url=(form.listing.value && bookingMap.showing) || bookingMap[goal()] || booking;
+        var b=doneEl.querySelector('[data-booking-link]'); b.hidden=false;
+        b.href=url+'?name='+encodeURIComponent(name)+'&email='+encodeURIComponent(form.email.value);
+      }
       if(!sent){
         var fb=doneEl.querySelector('[data-fallback]'); fb.hidden=false;
         fb.querySelector('[data-send-email]').href=mail; fb.querySelector('[data-send-wa]').href=wa;

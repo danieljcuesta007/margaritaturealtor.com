@@ -139,6 +139,14 @@ export const COPY = {
       body: 'Tell me a little about your plans and pick a time. I review everything before we meet, so our first conversation starts with real options, not paperwork.',
       work: 'Work with me',
       call: 'Call or text',
+      book: 'Book a 15-min call',
+    },
+    sequoia: {
+      eyebrow: 'New construction',
+      heading: 'Homes built by Sequoia Builders',
+      body: 'I am also a co-owner of Sequoia Builders, a family builder creating new homes in the Triangle. If a new home is on your list, I can walk you through what we are building and what is coming next.',
+      cta: 'See Sequoia Builders',
+      disclosure: 'Margarita Cuesta is a co-owner of Sequoia Builders LLC and discloses this interest to every client.',
     },
     footer: {
       licensed: 'Licensed real estate broker in North Carolina',
@@ -344,6 +352,14 @@ export const COPY = {
       body: 'Cuénteme un poco de sus planes y escoja una hora. Reviso todo antes de reunirnos, para que nuestra primera conversación empiece con opciones reales, no con papeles.',
       work: 'Trabajar conmigo',
       call: 'Llamar o escribir',
+      book: 'Agendar una llamada de 15 min',
+    },
+    sequoia: {
+      eyebrow: 'Construcción nueva',
+      heading: 'Casas construidas por Sequoia Builders',
+      body: 'También soy copropietaria de Sequoia Builders, una constructora familiar que hace casas nuevas en el Triángulo. Si una casa nueva está en sus planes, le muestro lo que estamos construyendo y lo que viene.',
+      cta: 'Ver Sequoia Builders',
+      disclosure: 'Margarita Cuesta es copropietaria de Sequoia Builders LLC y lo informa a cada cliente.',
     },
     footer: {
       licensed: 'Corredora de bienes raíces con licencia en Carolina del Norte',
