@@ -88,10 +88,12 @@ var form=d.querySelector('.intake');
 if(form){
   var steps=[].slice.call(form.querySelectorAll('.step')), dots=[].slice.call(form.querySelectorAll('.stepper li'));
   var back=form.querySelector('[data-back]'), next=form.querySelector('[data-next]'), submit=form.querySelector('[data-submit]');
-  var booking=form.dataset.booking, cur=0, q=new URLSearchParams(location.search);
+  var bookingMap={}; try{ bookingMap=JSON.parse(form.dataset.booking||'{}'); }catch(e){}
+  var anyBooking=Object.keys(bookingMap).map(function(k){return bookingMap[k]}).filter(Boolean);
+  var booking=bookingMap.discovery||anyBooking[0]||'', cur=0, q=new URLSearchParams(location.search);
   var listings=JSON.parse(form.querySelector('[data-listings]').textContent||'[]');
 
-  if(booking){ form.querySelector('[data-no-booking]').hidden=true; form.querySelector('[data-booking-only]').hidden=false; }
+  if(booking){ form.querySelectorAll('[data-no-booking]').forEach(function(x){x.hidden=true}); form.querySelector('[data-booking-only]').hidden=false; }
   else form.querySelectorAll('[data-req-nobooking]').forEach(function(i){i.required=true});
   var g=q.get('goal'); [].forEach.call(form.querySelectorAll('input[name=goal]'),function(r){ if(r.value===g) r.checked=true; });
   var lid=q.get('listing'), L=listings.filter(function(x){return x.id===lid})[0];
@@ -159,7 +161,13 @@ if(form){
     function finish(sent){
       steps.forEach(function(s){s.hidden=true}); form.querySelector('.form-nav').hidden=true; form.querySelector('.stepper').hidden=true;
       doneEl.hidden=false; doneEl.focus();
-      if(booking){ var b=doneEl.querySelector('[data-booking-link]'); b.hidden=false; b.href=booking; }
+      if(booking){
+        // The Calendly event that fits: a showing if they came from a listing, else by goal.
+        var g=goal(), fromListing=form.listing.value && (g==='buy'||g==='invest');
+        var url=(fromListing && bookingMap.showing) || bookingMap[g] || booking;
+        var b=doneEl.querySelector('[data-booking-link]'); b.hidden=false;
+        try{ var U=new URL(url); U.searchParams.set('name',name); U.searchParams.set('email',form.email.value); b.href=U.toString(); }catch(e){ b.href=url; }
+      }
       if(!sent){
         var fb=doneEl.querySelector('[data-fallback]'); fb.hidden=false;
         fb.querySelector('[data-send-email]').href=mail; fb.querySelector('[data-send-wa]').href=wa;

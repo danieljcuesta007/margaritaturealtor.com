@@ -138,7 +138,7 @@ test('a full intake sends Margarita a readable brief with the listing, and only 
   assert.equal(await evaluate(`document.querySelector('.intake input[name=goal]:checked').value`), 'buy', 'goal prefilled');
   await evaluate(`document.querySelector('.intake [data-next]').click()`);
   await evaluate(`(() => { const f=document.querySelector('.intake'); f.areas.value='Knightdale'; f.querySelector('[data-next]').click(); })()`);
-  await evaluate(`(() => { const f=document.querySelector('.intake'); f.querySelector('input[name=meeting]').checked=true; f.day1.value='2026-10-20'; f.consent.checked=true; f.requestSubmit(); })()`);
+  await evaluate(`(() => { const f=document.querySelector('.intake'); f.consent.checked=true; f.requestSubmit(); })()`);
   await new Promise((r) => setTimeout(r, 200));
   const posts = await evaluate('window.__posts');
   assert.equal(posts.length, 1);
@@ -146,12 +146,24 @@ test('a full intake sends Margarita a readable brief with the listing, and only 
   assert.match(brief, /^Listing: 1036 Mailwood Drive, Knightdale/);
   assert.match(brief, /Nombre: Ana/);
   assert.match(brief, /Áreas o vecindarios que le gustan: Knightdale/);
-  assert.match(brief, /Día 1: 2026-10-20/);
-  assert.doesNotMatch(brief, /Hora 2|Hora 3/, 'unused time slots left out');
+  // With Calendly configured, preferred-time questions are replaced by real booking.
+  assert.doesNotMatch(brief, /Día 1|Hora 1/, 'time questions hidden when booking is set');
   assert.doesNotMatch(brief, /Rango de precio/, 'unanswered selects left out');
   assert.doesNotMatch(brief, /Dirección de la casa que vende/, 'sell questions not asked of a buyer');
   assert.equal(posts[0].body.fields.lang, 'es');
   assert.equal(await evaluate(`document.querySelector('.intake .done').hidden`), false);
+  // Came from a listing card, so the handoff is her Calendly "showing" event, pre-filled.
+  const href = await evaluate(`document.querySelector('[data-booking-link]').href`);
+  assert.match(href, /^https:\/\/calendly\.com\/margarita-corralesre\/showing\?name=Ana\+Prueba&email=ana%40example\.com$/);
+});
+
+test('a seller with no listing is handed to the listing-consultation event', { skip }, async () => {
+  await open('/work-with-me/?goal=sell');
+  await evaluate(FILL_STEP1);
+  for (let i = 0; i < 2; i++) await evaluate(`document.querySelector('.intake [data-next]').click()`);
+  await evaluate(`(() => { const f=document.querySelector('.intake'); f.sellAddress.value='1 Main St'; f.querySelector('[data-next]').click(); f.consent.checked=true; f.dataset.api='/api/lead'; f.requestSubmit(); })()`);
+  await new Promise((r) => setTimeout(r, 200));
+  assert.match(await evaluate(`document.querySelector('[data-booking-link]').href`), /\/listing-consultation\?/);
 });
 
 test('the guide popup opens from ?guide=1 and hands over the PDF in the same click', { skip }, async () => {
@@ -162,4 +174,13 @@ test('the guide popup opens from ?guide=1 and hands over the PDF in the same cli
   assert.equal(opened.length, 1);
   assert.match(opened[0], /before-you-buy-triangle\.pdf$/);
   assert.equal(await evaluate(`document.querySelector('.pop-done').hidden`), false);
+});
+
+test('a visitor from a listing who switches to selling gets the listing consultation, not a showing', { skip }, async () => {
+  await open('/work-with-me/?goal=buy&listing=1036-mailwood');
+  await evaluate(FILL_STEP1);
+  await evaluate(`document.querySelector('.intake [data-next]').click()`);
+  await evaluate(`(() => { const f=document.querySelector('.intake'); f.querySelector('input[name=goal][value=sell]').checked=true; f.querySelector('[data-next]').click(); f.sellAddress.value='1 Main St'; f.querySelector('[data-next]').click(); f.consent.checked=true; f.dataset.api='/api/lead'; f.requestSubmit(); })()`);
+  await new Promise((r) => setTimeout(r, 200));
+  assert.match(await evaluate(`document.querySelector('[data-booking-link]').href`), /\/listing-consultation\?name=/);
 });

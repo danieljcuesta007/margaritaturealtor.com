@@ -56,7 +56,7 @@ and listing data has MLS display rules, so a person picks the homes.
 | Notify Margarita | Cloudflare Email Routing `send_email` | Can only send to verified addresses, which is exactly her inbox |
 | Email to clients | Resend (free: 3,000/month) from `margaritacuesta.com` | Needs the domain + SPF/DKIM; Reply-To `margarita@corralesre.com` so replies reach her |
 | Cron trigger | hourly | Reminders and scheduled touchpoints |
-| Booking | her calendar link in `data/identity.json` → `links.booking` | The intake hands off to it automatically once set |
+| Booking | Calendly events per goal in `data/identity.json` → `links.booking` (set 12 Oct 2026) | The intake hands off to the matching event, prefilled |
 | Newsletter | `subscribers` table, sent monthly | Or Kit/Flodesk if she wants a visual editor |
 
 Front-end switch: set `api.leads` and `api.subscribe` in `data/identity.json` to the Worker

@@ -309,6 +309,34 @@ function listingCard(ctx, l) {
 </article>`;
 }
 
+function sequoiaBand(ctx) {
+  const { identity, c } = ctx;
+  const v = (identity.ventures || []).find((x) => x.id === 'sequoia');
+  if (!v) return '';
+  const S = c.sequoia;
+  return `<section class="sequoia" aria-labelledby="sequoia-h">
+  <div class="wrap sequoia-inner">
+    <div class="sequoia-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M32 4 14 30h8L10 46h16v14h12V46h16L42 30h8z" fill="currentColor"/></svg></div>
+    <div>
+      <p class="eyebrow">${esc(S.eyebrow)}</p>
+      <h2 id="sequoia-h">${esc(S.heading)}</h2>
+      <p>${esc(S.body)}</p>
+      <a class="btn btn-ink" href="${esc(v.url)}" rel="noopener">${esc(S.cta)} ${icon('arrow')}</a>
+      <p class="fine">${esc(S.disclosure)}</p>
+    </div>
+  </div>
+</section>
+`;
+}
+
+/** Booking links as {goal: url}, minus $-prefixed notes. A single string is treated as the discovery link. */
+export function bookingMap(identity) {
+  const b = identity.links?.booking;
+  if (!b) return {};
+  if (typeof b === 'string') return { discovery: b };
+  return Object.fromEntries(Object.entries(b).filter(([k, v]) => !k.startsWith('$') && typeof v === 'string' && v));
+}
+
 function homeBody(ctx) {
   const { identity, c, u, listings } = ctx;
   const tel = `tel:${identity.contact.phoneE164}`;
@@ -354,6 +382,7 @@ ${journeys(ctx)}
   </div>
 </section>
 
+${sequoiaBand(ctx)}
 <section id="services" class="services" aria-labelledby="services-h">
   <div class="wrap">
     <p class="eyebrow">${esc(c.services.eyebrow)}</p>
@@ -429,6 +458,7 @@ ${journeys(ctx)}
     <p>${esc(c.cta.body)}</p>
     <div class="cta-row">
       <a class="btn btn-tiff" href="${work}">${esc(c.cta.work)} ${icon('arrow')}</a>
+      ${bookingMap(identity).discovery ? `<a class="btn btn-line-light" href="${esc(bookingMap(identity).discovery)}" rel="noopener" data-book-call>${esc(c.cta.book)}</a>` : ''}
       <a class="btn btn-line-light" href="${tel}">${icon('phone')}<span>${esc(c.cta.call)} ${esc(identity.contact.phoneDisplay)}</span></a>
     </div>
   </div>
@@ -458,7 +488,7 @@ function workBody(ctx) {
       <figure class="work-portrait"><img src="${ctx.u('/' + identity.images.portraitSmall)}" width="640" height="960" alt="${esc(identity.name)}"></figure>
       <p class="fine">${esc(W.privacy)}</p>
     </aside>
-    <form class="intake" novalidate data-api="${esc(identity.api.leads)}" data-booking="${esc(identity.links.booking)}" data-email="${identity.contact.email}" data-wa="${identity.contact.whatsapp}" data-subject="${esc(W.subject)}" data-lang="${c.lang}">
+    <form class="intake" novalidate data-api="${esc(identity.api.leads)}" data-booking="${esc(JSON.stringify(bookingMap(identity)))}" data-email="${identity.contact.email}" data-wa="${identity.contact.whatsapp}" data-subject="${esc(W.subject)}" data-lang="${c.lang}">
       <ol class="stepper">${W.steps.map((s, i) => `<li${i === 0 ? ' class="is-on" aria-current="step"' : ''}><span>${i + 1}</span><em>${esc(s)}</em></li>`).join('')}</ol>
       <p class="listing-chip" hidden><span>${esc(F.listing)}:</span> <strong data-listing-name></strong><input type="hidden" name="listing"></p>
       <script type="application/json" data-listings>${JSON.stringify(listings.map((l) => ({ id: l.id, name: `${l.address}, ${l.locality}` }))).replace(/</g, '\\u003c')}</script>
@@ -519,7 +549,7 @@ function workBody(ctx) {
 
       <fieldset class="step" data-step="4" hidden>
         <legend>${esc(W.steps[3])}</legend>
-        <div class="q"><span class="q-l">${esc(F.meeting)}</span>${radios('meeting', F.meetings, true)}</div>
+        <div class="q" data-no-booking><span class="q-l">${esc(F.meeting)}</span>${radios('meeting', F.meetings, true)}</div>
         <div class="times" data-no-booking>
           <p class="q-l">${esc(F.times)}</p>
           ${[1, 2, 3].map(timeRow).join('\n          ')}
