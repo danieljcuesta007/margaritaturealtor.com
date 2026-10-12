@@ -76,9 +76,10 @@ if(pop && typeof pop.showModal==='function'){
     e.preventDefault();
     var f=new FormData(e.target), api=pop.dataset.api;
     var payload={name:f.get('name'),email:f.get('email'),lang:pop.dataset.lang,source:'guide',page:location.pathname};
-    function done(){ e.target.hidden=true; pop.querySelector('.pop-done').hidden=false; window.open(pop.dataset.pdf,'_blank','noopener'); }
-    if(api){ fetch(api,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).then(done,done); }
-    else done();
+    // Open the PDF inside the submit gesture so popup blockers allow it; record the lead in the background.
+    window.open(pop.dataset.pdf,'_blank','noopener');
+    e.target.hidden=true; pop.querySelector('.pop-done').hidden=false;
+    if(api) fetch(api,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),keepalive:true}).catch(function(){});
   });
 }
 
@@ -92,7 +93,7 @@ if(form){
 
   if(booking){ form.querySelector('[data-no-booking]').hidden=true; form.querySelector('[data-booking-only]').hidden=false; }
   else form.querySelectorAll('[data-req-nobooking]').forEach(function(i){i.required=true});
-  var g=q.get('goal'); if(g){ var r=form.querySelector('input[name=goal][value="'+g+'"]'); if(r) r.checked=true; }
+  var g=q.get('goal'); [].forEach.call(form.querySelectorAll('input[name=goal]'),function(r){ if(r.value===g) r.checked=true; });
   var lid=q.get('listing'), L=listings.filter(function(x){return x.id===lid})[0];
   if(L){ var chip=form.querySelector('.listing-chip'); chip.hidden=false; chip.querySelector('[data-listing-name]').textContent=L.name; chip.querySelector('input').value=L.name; }
   var today=new Date(); today.setMinutes(today.getMinutes()-today.getTimezoneOffset());
@@ -113,8 +114,9 @@ if(form){
     var ok=true;
     steps[i].querySelectorAll('input,select,textarea').forEach(function(el){
       if(el.closest('.when[hidden],[data-no-booking][hidden]')) return;
-      if(!el.checkValidity()){ ok=false; el.closest('label,.q') && (el.closest('label,.q').classList.add('is-bad')); }
-      else el.closest('label,.q') && el.closest('label,.q').classList.remove('is-bad');
+      var box=el.closest('.q')||el.closest('label');
+      if(!el.checkValidity()){ ok=false; if(box) box.classList.add('is-bad'); }
+      else if(box && !box.querySelector(':invalid')) box.classList.remove('is-bad');
     });
     if(!ok){ var bad=steps[i].querySelector('.is-bad input, .is-bad select, .is-bad textarea'); if(bad) bad.focus(); }
     return ok;
@@ -147,6 +149,8 @@ if(form){
   }
   form.addEventListener('submit',function(e){
     e.preventDefault(); if(!valid(cur)) return;
+    // Enter in a field submits the form from any step: treat it as Continue until the last step.
+    if(cur<steps.length-1){ go(cur+1,true); return; }
     var text=brief(), name=(form.firstName.value+' '+form.lastName.value).trim();
     var subject=form.dataset.subject+': '+name+' ('+goal()+')';
     var mail='mailto:'+form.dataset.email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text);

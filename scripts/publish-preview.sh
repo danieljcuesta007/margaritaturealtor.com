@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 OWNER="$(gh api user -q .login)"
 REPO="${PREVIEW_REPO:-$OWNER/margaritacuesta-preview}"
 NAME="${REPO#*/}"
+# Guard: this force-pushes, so only ever target a repo named *-preview.
+case "$NAME" in *-preview) ;; *) echo "Refusing: $REPO is not a *-preview repo" >&2; exit 1;; esac
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 node src/build.mjs "$TMP/site" --preview --base="/$NAME"
 if ! gh repo view "$REPO" >/dev/null 2>&1; then

@@ -7,7 +7,10 @@
  *   Person (#margarita) -- worksFor --> Organization (#team) -- parentOrganization --> The Insight Group
  *   RealEstateAgent (#agent) -- employee --> Person   (the LocalBusiness that local search reads)
  *   WebSite -- about --> Person;  each WebPage -- about/mainEntity --> Person
- *   Event (open house) -- organizer --> Person
+ *
+ * No Event nodes for open houses: this is a static build, and a scheduled event
+ * left on the page after it ends is worse than none. Add them back only with a
+ * scheduled rebuild (see docs/LEAD-SYSTEM.md).
  */
 
 export function ids(site) {
@@ -20,7 +23,7 @@ export function ids(site) {
   };
 }
 
-export function buildGraph(identity, copy, { page = 'home', listings = [], now = new Date() } = {}) {
+export function buildGraph(identity, copy, { page = 'home' } = {}) {
   const site = identity.site;
   const id = ids(site);
   const lang = copy.lang;
@@ -105,32 +108,5 @@ export function buildGraph(identity, copy, { page = 'home', listings = [], now =
     mainEntity: { '@id': id.person },
   };
 
-  const events =
-    page !== 'home'
-      ? []
-      : listings
-          .filter((l) => l.status === 'active')
-          .flatMap((l) =>
-            (l.openHouses || [])
-              .filter((oh) => new Date(oh.end) > now)
-              .map((oh) => ({
-                '@type': 'Event',
-                name: `${lang === 'es' ? 'Casa abierta' : 'Open house'}: ${l.address}, ${l.locality}`,
-                startDate: oh.start,
-                endDate: oh.end,
-                eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-                eventStatus: 'https://schema.org/EventScheduled',
-                image: `${site}/${l.photos[0]}`,
-                description: l.highlights[lang],
-                location: {
-                  '@type': 'Place',
-                  name: l.address,
-                  address: { '@type': 'PostalAddress', streetAddress: l.address, addressLocality: l.locality, addressRegion: l.region, postalCode: l.postalCode, addressCountry: 'US' },
-                },
-                organizer: { '@id': id.person },
-                isAccessibleForFree: true,
-              })),
-          );
-
-  return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, webPage, ...events] };
+  return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, webPage] };
 }

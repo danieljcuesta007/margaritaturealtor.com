@@ -271,7 +271,8 @@ section { padding: clamp(72px, 10vw, 136px) 0; }
 .pill input:checked + span { background: var(--ink); color: #fff; border-color: var(--ink); }
 .pill input:focus-visible + span { outline: 3px solid var(--tiff-ink); outline-offset: 2px; }
 .pills-lg .pill span { padding: 14px 20px; font-size: .98rem; }
-.is-bad .pill span, .is-bad > input, .is-bad > select { border-color: #C2413A !important; }
+.is-bad .pill span, .is-bad > input, .is-bad > select, .is-bad > textarea { border-color: #C2413A !important; }
+.q.is-bad .q-l { color: #C2413A; }
 .time-row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
 .consent { display: flex !important; gap: 12px; align-items: flex-start; font-weight: 500 !important; color: var(--ink-2); }
 .consent input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--ink); }

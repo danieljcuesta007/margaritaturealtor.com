@@ -16,7 +16,7 @@ a bar across the top, a free bilingual buyer's guide behind a pop-up, and the
 
 ## Requirements
 
-- Node 18 or newer. No packages to install: the build and tests use the standard library only.
+- Node 18 or newer (22+ for the browser tests, which also need Google Chrome and skip without it). No packages to install.
 - Python 3 (preinstalled on macOS) only for the local preview server.
 - Only to regenerate the share image (`scripts/make-images.sh`): Google Chrome and macOS's
   built-in `sips`. On Linux, screenshot `scripts/og.html` (1200x630) and `scripts/icon.html`

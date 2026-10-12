@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, join, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COPY, LANGS } from './copy.mjs';
-import { renderLanguage, officeLine } from './render.mjs';
+import { renderLanguage, officeLine, activeListings } from './render.mjs';
 import * as client from './client.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -100,7 +100,7 @@ export function build({
 
   // A preview must never be indexed: it would compete with the real domain.
   writeFileSync(join(outDir, 'robots.txt'), preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\n\nSitemap: ${site}/sitemap.xml\n`);
-  writeFileSync(join(outDir, 'llms.txt'), llmsTxt(identity, listings, now));
+  writeFileSync(join(outDir, 'llms.txt'), llmsTxt(identity, listings));
   writeFileSync(join(outDir, '404.html'), notFound(identity, css, base));
   writeFileSync(join(outDir, '.nojekyll'), '');
   writeFileSync(
@@ -110,8 +110,8 @@ export function build({
   return { outDir, pages, sitemap };
 }
 
-export function llmsTxt(identity, listings = [], now = new Date()) {
-  const active = listings.filter((l) => l.status === 'active');
+export function llmsTxt(identity, listings = []) {
+  const active = activeListings(listings);
   return `# ${identity.name}
 
 > ${identity.description.en}
@@ -147,15 +147,25 @@ function notFound(identity, css, base) {
 `;
 }
 
+/** CLI: [outDir] [--preview] [--base=/name | --base /name] */
+export function parseArgs(args) {
+  const res = { outDir: undefined, base: '', preview: false };
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--preview') res.preview = true;
+    else if (a === '--base' || a.startsWith('--base=')) {
+      const v = a === '--base' ? args[++i] : a.slice('--base='.length);
+      if (!v || !/^\/[\w.-]+$/.test(v.replace(/\/$/, ''))) throw new Error(`--base needs a path like /my-repo, got ${JSON.stringify(v)}`);
+      res.base = v.replace(/\/$/, '');
+    } else if (a.startsWith('--')) throw new Error(`Unknown option ${a}`);
+    else if (res.outDir) throw new Error(`Two output folders given: ${res.outDir} and ${a}`);
+    else res.outDir = a;
+  }
+  return res;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const args = process.argv.slice(2);
-  const flag = (n) => args.find((a) => a.startsWith(`--${n}`));
-  const out = args.find((a) => !a.startsWith('--'));
-  const baseArg = flag('base');
-  const { outDir, pages } = build({
-    ...(out ? { outDir: resolve(out) } : {}),
-    base: baseArg ? baseArg.split('=')[1].replace(/\/$/, '') : '',
-    preview: Boolean(flag('preview')),
-  });
+  const { outDir: out, base, preview } = parseArgs(process.argv.slice(2));
+  const { outDir, pages } = build({ ...(out ? { outDir: resolve(out) } : {}), base, preview });
   console.log(`Built ${Object.keys(pages).length} pages into ${outDir}`);
 }

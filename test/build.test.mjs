@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync, existsSync, readdirSync, statSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, loadIdentity, loadListings, llmsTxt, assertSafeOutDir, GUIDE_PDF } from '../src/build.mjs';
+import { build, loadIdentity, loadListings, llmsTxt, assertSafeOutDir, parseArgs, GUIDE_PDF } from '../src/build.mjs';
+import { spawnSync } from 'node:child_process';
 import { COPY } from '../src/copy.mjs';
 import { GUIDE } from '../src/guide.mjs';
 import { nextOpenHouse } from '../src/render.mjs';
@@ -90,13 +91,28 @@ test('the site has no pharmaceutical history (her call, 12 Oct 2026)', () => {
 
 test('the next open house is announced, and disappears once it is over', () => {
   assert.match(pages['/'], /class="announce"/);
-  assert.match(pages['/'], /"@type":"Event"/);
+  // No Event schema: a static page would keep an expired event after the date.
+  assert.doesNotMatch(pages['/'], /"@type":"Event"/);
   const oh = listings[0].openHouses[0];
   const after = new Date(new Date(oh.end).getTime() + 60000);
   assert.equal(nextOpenHouse(listings, after), undefined);
   const { pages: p } = build({ outDir: tmp('mc-after-'), root: ROOT, identity, listings, now: after });
   assert.doesNotMatch(p['/'], /class="announce"/);
-  assert.doesNotMatch(p['/'], /"@type":"Event"/);
+});
+
+test('build CLI accepts --base=/x and --base /x, and rejects anything else', () => {
+  assert.deepEqual(parseArgs(['out', '--preview', '--base', '/margaritacuesta-preview/']), { outDir: 'out', base: '/margaritacuesta-preview', preview: true });
+  assert.deepEqual(parseArgs(['--base=/x']), { outDir: undefined, base: '/x', preview: false });
+  assert.throws(() => parseArgs(['--base']), /--base needs/);
+  assert.throws(() => parseArgs(['--base', 'no-slash']), /--base needs/);
+  assert.throws(() => parseArgs(['a', 'b']), /Two output folders/);
+});
+
+test('publish-preview.sh refuses any repo not named *-preview', () => {
+  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritacuesta.com' }, encoding: 'utf8' });
+  if (r.error || /gh: command not found|not logged/i.test(r.stderr)) return; // no gh here: guard untestable
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /Refusing/);
 });
 
 test('hreflang alternates are reciprocal and the sitemap lists all four pages', () => {

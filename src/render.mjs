@@ -29,12 +29,13 @@ export function openHouseLabel(oh, htmlLang) {
   return `${day} · ${t.format(s)} – ${t.format(e)}`;
 }
 
+export const activeListings = (listings) => listings.filter((l) => l.status === 'active');
+export const upcomingOpenHouses = (l, now) => (l.openHouses || []).filter((oh) => new Date(oh.end) > now);
+
 /** The next open house that has not ended yet, across all active listings. */
 export function nextOpenHouse(listings, now) {
-  return listings
-    .filter((l) => l.status === 'active')
-    .flatMap((l) => (l.openHouses || []).map((oh) => ({ listing: l, oh })))
-    .filter(({ oh }) => new Date(oh.end) > now)
+  return activeListings(listings)
+    .flatMap((l) => upcomingOpenHouses(l, now).map((oh) => ({ listing: l, oh })))
     .sort((a, b) => new Date(a.oh.start) - new Date(b.oh.start))[0];
 }
 
@@ -271,7 +272,7 @@ function journeys(ctx) {
 function listingCard(ctx, l) {
   const { c, u, now } = ctx;
   const L = c.listings;
-  const oh = (l.openHouses || []).filter((o) => new Date(o.end) > now)[0];
+  const oh = upcomingOpenHouses(l, now)[0];
   const sold = l.status === 'sold';
   const book = `${u(c.paths.work)}?goal=buy&amp;listing=${encodeURIComponent(l.id)}`;
   return `<article class="flip${sold ? ' is-sold' : ''}" data-flip>
@@ -314,7 +315,7 @@ function homeBody(ctx) {
   const wa = `${identity.contact.whatsapp}?text=${encodeURIComponent(c.lang === 'es' ? 'Hola Margarita, la encontré por su sitio web.' : 'Hi Margarita, I found you through your website.')}`;
   const h = c.hero;
   const work = u(c.paths.work);
-  const cards = [...listings.filter((l) => l.status === 'active'), ...listings.filter((l) => l.status === 'sold')];
+  const cards = [...activeListings(listings), ...listings.filter((l) => l.status === 'sold')];
 
   return `<section class="hero">
   <div class="wrap hero-grid">
@@ -563,12 +564,12 @@ export function renderLanguage({ identity, listings, copy, all, css, script, bas
   const home = page(ctx, 'home', homeBody(ctx), {
     title: copy.title,
     description: copy.metaDescription,
-    graph: buildGraph(identity, copy, { page: 'home', listings, now }),
+    graph: buildGraph(identity, copy, { page: 'home' }),
   });
   const work = page(ctx, 'work', workBody(ctx), {
     title: copy.work.title,
     description: copy.work.metaDescription,
-    graph: buildGraph(identity, copy, { page: 'work', listings, now }),
+    graph: buildGraph(identity, copy, { page: 'work' }),
   });
   return { [copy.paths.home]: home, [copy.paths.work]: work };
 }
