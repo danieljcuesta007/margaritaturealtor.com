@@ -1,15 +1,13 @@
 /**
  * The JSON-LD graph. Same rule as danielcuesta007.com's identity.ts: Margarita
- * is defined ONCE, as the node at PERSON_ID, and everything else points at it
- * by @id. Two Person objects named "Margarita Cuesta" would be two half-entities
- * to a crawler, splitting the evidence between them.
+ * is defined ONCE, as the node at #margarita, and everything else points at it
+ * by @id. Two Person objects named "Margarita Cuesta" would be two
+ * half-entities to a crawler, splitting the evidence between them.
  *
- * Shape of the graph:
- *   Person (#margarita) ── worksFor ──▶ Organization (#team) ── parentOrganization ──▶ The Insight Group
- *        ▲
- *        └── employee ── RealEstateAgent (#agent)   (the LocalBusiness Google reads for local results)
- *   WebSite (#website) ── about ──▶ Person
- *   WebPage (per language) ── about ──▶ Person, mainEntity ──▶ FAQPage
+ *   Person (#margarita) -- worksFor --> Organization (#team) -- parentOrganization --> The Insight Group
+ *   RealEstateAgent (#agent) -- employee --> Person   (the LocalBusiness that local search reads)
+ *   WebSite -- about --> Person;  each WebPage -- about/mainEntity --> Person
+ *   Event (open house) -- organizer --> Person
  */
 
 export function ids(site) {
@@ -22,11 +20,11 @@ export function ids(site) {
   };
 }
 
-export function buildGraph(identity, copy, { faq }) {
+export function buildGraph(identity, copy, { page = 'home', listings = [], now = new Date() } = {}) {
   const site = identity.site;
   const id = ids(site);
   const lang = copy.lang;
-  const pageUrl = `${site}${copy.path}`;
+  const pageUrl = `${site}${copy.paths[page]}`;
   const team = identity.team;
   const address = {
     '@type': 'PostalAddress',
@@ -36,7 +34,6 @@ export function buildGraph(identity, copy, { faq }) {
     postalCode: team.address.postalCode,
     addressCountry: team.address.country,
   };
-  const areaServed = identity.areaServed.map((name) => ({ '@type': 'Place', name }));
   const languages = [
     { '@type': 'Language', name: 'English', alternateName: 'en' },
     { '@type': 'Language', name: 'Spanish', alternateName: 'es' },
@@ -55,44 +52,36 @@ export function buildGraph(identity, copy, { faq }) {
     telephone: identity.contact.phoneE164,
     knowsLanguage: languages,
     worksFor: { '@id': id.team },
-    workLocation: { '@type': 'Place', name: 'Raleigh, North Carolina', address },
-    hasCredential: {
-      '@type': 'EducationalOccupationalCredential',
-      name: `${identity.license.state} Real Estate Broker License`,
-      credentialCategory: 'license',
-      identifier: identity.license.number,
-      recognizedBy: { '@type': 'GovernmentOrganization', name: identity.license.issuer, url: identity.license.issuerUrl },
-    },
+    hasCredential: [
+      {
+        '@type': 'EducationalOccupationalCredential',
+        name: `${identity.license.state} Real Estate Broker License`,
+        credentialCategory: 'license',
+        identifier: identity.license.number,
+        recognizedBy: { '@type': 'GovernmentOrganization', name: identity.license.issuer, url: identity.license.issuerUrl },
+      },
+      ...identity.credentials.map((c) => ({ '@type': 'EducationalOccupationalCredential', name: c.en, credentialCategory: 'certification' })),
+    ],
     alumniOf: identity.education.map((e) => ({ '@type': 'CollegeOrUniversity', name: e.name, address: e.place })),
-    award: identity.awards.map((a) => `${a.en} (${a.year})`),
     sameAs: identity.profiles.map((p) => p.url),
   };
 
   const agent = {
     '@type': 'RealEstateAgent',
     '@id': id.agent,
-    name: `${identity.name}, ${identity.firm.displayWithTeam}`,
+    name: `${identity.name}, REALTOR®`,
     url: `${site}/`,
     image: `${site}/${identity.images.portrait}`,
     telephone: identity.contact.phoneE164,
     email: identity.contact.email,
     address,
-    areaServed,
+    areaServed: identity.areaServed.map((name) => ({ '@type': 'Place', name })),
     knowsLanguage: languages,
     employee: { '@id': id.person },
     parentOrganization: { '@id': id.team },
   };
 
-  const teamNode = {
-    '@type': 'Organization',
-    '@id': id.team,
-    name: team.name,
-    url: team.url,
-    telephone: team.phoneE164,
-    address,
-    parentOrganization: { '@id': id.firm },
-  };
-
+  const teamNode = { '@type': 'Organization', '@id': id.team, name: team.name, telephone: team.phoneE164, address, parentOrganization: { '@id': id.firm } };
   const firm = { '@type': 'Organization', '@id': id.firm, name: identity.firm.name, brand: identity.firm.brand };
 
   const website = {
@@ -105,29 +94,43 @@ export function buildGraph(identity, copy, { faq }) {
     publisher: { '@id': id.person },
   };
 
-  const faqPage = {
-    '@type': 'FAQPage',
-    '@id': `${pageUrl}#faq`,
-    mainEntity: faq.map(([q, a]) => ({
-      '@type': 'Question',
-      name: q,
-      acceptedAnswer: { '@type': 'Answer', text: a },
-    })),
-  };
-
-  const page = {
-    '@type': ['WebPage', 'ProfilePage'],
+  const webPage = {
+    '@type': page === 'work' ? ['WebPage', 'ContactPage'] : ['WebPage', 'ProfilePage'],
     '@id': `${pageUrl}#webpage`,
     url: pageUrl,
-    name: copy.title,
-    description: copy.metaDescription,
+    name: page === 'work' ? copy.work.title : copy.title,
     inLanguage: copy.htmlLang,
     isPartOf: { '@id': id.website },
     about: { '@id': id.person },
     mainEntity: { '@id': id.person },
-    primaryImageOfPage: `${site}/${identity.images.portrait}`,
-    hasPart: { '@id': `${pageUrl}#faq` },
   };
 
-  return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, page, faqPage] };
+  const events =
+    page !== 'home'
+      ? []
+      : listings
+          .filter((l) => l.status === 'active')
+          .flatMap((l) =>
+            (l.openHouses || [])
+              .filter((oh) => new Date(oh.end) > now)
+              .map((oh) => ({
+                '@type': 'Event',
+                name: `${lang === 'es' ? 'Casa abierta' : 'Open house'}: ${l.address}, ${l.locality}`,
+                startDate: oh.start,
+                endDate: oh.end,
+                eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+                eventStatus: 'https://schema.org/EventScheduled',
+                image: `${site}/${l.photos[0]}`,
+                description: l.highlights[lang],
+                location: {
+                  '@type': 'Place',
+                  name: l.address,
+                  address: { '@type': 'PostalAddress', streetAddress: l.address, addressLocality: l.locality, addressRegion: l.region, postalCode: l.postalCode, addressCountry: 'US' },
+                },
+                organizer: { '@id': id.person },
+                isAccessibleForFree: true,
+              })),
+          );
+
+  return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, webPage, ...events] };
 }

@@ -52,10 +52,9 @@ Change **display names and bios**, which is what search actually reads.
    searchable on Instagram). Bio: `Bilingual realtor · English & Español · Corrales Real
    Estate Team with The Insight Group · NC #358832`. Link: margaritacuesta.com (or a single
    cleaned Linktree with the site first).
-4. **LinkedIn.** Headline: `Real Estate Broker & REALTOR® | Corrales Real Estate Team with
+4. **LinkedIn** (kept off the website by Daniel's call, 12 Oct 2026, but the profile itself should still match). Headline: `Real Estate Broker & REALTOR® | Corrales Real Estate Team with
    The Insight Group | Bilingual English/Spanish | Raleigh-Durham`. Add the Corrales team as
-   current experience, the site under Contact info, and keep the Teva/ADMA history: it is a
-   credibility story, not baggage.
+   current experience and the site under Contact info.
 5. **TikTok.** Name `Margarita Cuesta | Realtor`, same bio line. A website link on TikTok
    needs a Business account or 1,000 followers; until then put the site in the bio text.
 6. **Linktree.** Merge to one tree, put the website first, and move the affiliate links to

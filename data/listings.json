@@ -1,0 +1,30 @@
+{
+  "$comment": "Margarita's current listings. Add one object per listing; the site shows active ones first and the next open house in the announcement bar. Times are local (America/New_York). Remove or mark status 'sold' when it closes.",
+  "listings": [
+    {
+      "id": "1036-mailwood",
+      "status": "active",
+      "mls": "10197742",
+      "address": "1036 Mailwood Drive",
+      "locality": "Knightdale",
+      "region": "NC",
+      "postalCode": "27545",
+      "subdivision": "Amber Ridge",
+      "price": 264000,
+      "beds": 3,
+      "baths": 2,
+      "sqft": 1157,
+      "yearBuilt": 2002,
+      "lotAcres": 0.18,
+      "photos": ["assets/img/listing-1036-mailwood-1.jpg", "assets/img/listing-1036-mailwood-2.jpg", "assets/img/listing-1036-mailwood-3.jpg"],
+      "url": "https://my.flexmls.com/MargaritaCuesta/search/shared_links/EiOiI/listings/20261007151434330934000000",
+      "highlights": {
+        "en": "A charming ranch with a covered front porch, vaulted living room, granite kitchen, fenced backyard with deck, and a 2022 roof.",
+        "es": "Una casa de un piso con porche cubierto, sala con techo abovedado, cocina con granito, patio cercado con terraza y techo nuevo de 2022."
+      },
+      "openHouses": [
+        { "start": "2026-10-31T10:00:00-04:00", "end": "2026-10-31T12:00:00-04:00" }
+      ]
+    }
+  ]
+}

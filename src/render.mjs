@@ -1,9 +1,14 @@
 import { buildGraph } from './schema.mjs';
 
-const esc = (s) =>
+export const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-/** Fill {phone} {email} {license} placeholders in copy strings. */
+export function officeLine(identity) {
+  const a = identity.team.address;
+  return `${a.street}, ${a.locality}, ${a.region} ${a.postalCode}`;
+}
+
+/** Fill {phone} {email} {license} {office} placeholders in copy strings. */
 export function fill(text, identity) {
   return text
     .replaceAll('{phone}', identity.contact.phoneDisplay)
@@ -12,281 +17,558 @@ export function fill(text, identity) {
     .replaceAll('{office}', officeLine(identity));
 }
 
-export function officeLine(identity) {
-  const a = identity.team.address;
-  return `${a.street}, ${a.locality}, ${a.region} ${a.postalCode}`;
+const TZ = 'America/New_York';
+export const money = (n) => `$${Number(n).toLocaleString('en-US')}`;
+
+/** "Sat, Oct 31 · 10:00 AM – 12:00 PM" in the page language, Eastern time. */
+export function openHouseLabel(oh, htmlLang) {
+  const s = new Date(oh.start);
+  const e = new Date(oh.end);
+  const day = new Intl.DateTimeFormat(htmlLang, { weekday: 'short', month: 'short', day: 'numeric', timeZone: TZ }).format(s);
+  const t = new Intl.DateTimeFormat(htmlLang, { hour: 'numeric', minute: '2-digit', timeZone: TZ });
+  return `${day} · ${t.format(s)} – ${t.format(e)}`;
+}
+
+/** The next open house that has not ended yet, across all active listings. */
+export function nextOpenHouse(listings, now) {
+  return listings
+    .filter((l) => l.status === 'active')
+    .flatMap((l) => (l.openHouses || []).map((oh) => ({ listing: l, oh })))
+    .filter(({ oh }) => new Date(oh.end) > now)
+    .sort((a, b) => new Date(a.oh.start) - new Date(b.oh.start))[0];
 }
 
 const ICON = {
   phone: '<path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/>',
-  chat: '<path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1z"/>',
   whatsapp: '<path d="M12 2.2A9.8 9.8 0 0 0 3.6 17l-1.4 4.8 5-1.3A9.8 9.8 0 1 0 12 2.2zm0 17.8a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3a.4.4 0 0 0 0-.4l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.7 2.7 0 0 0-.8 2 4.6 4.6 0 0 0 1 2.5 10.6 10.6 0 0 0 4 3.6c1.5.6 2.1.7 2.8.6a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/>',
   mail: '<path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4 7.4V17h16V7.4z"/>',
-  search: '<path d="M10 3a7 7 0 0 1 5.6 11.2l5 5-1.4 1.4-5-5A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/>',
   instagram: '<path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM17.5 5.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>',
   tiktok: '<path d="M16.6 2h-3.3v13.3a2.9 2.9 0 1 1-2-2.8V9.1a6.2 6.2 0 1 0 5.3 6.2V8.6a7.6 7.6 0 0 0 4.4 1.4V6.7a4.4 4.4 0 0 1-4.4-4.4z"/>',
-  linkedin: '<path d="M4.5 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM3 8.5h3V21H3zm6 0h2.9v1.7h.1a3.2 3.2 0 0 1 2.9-1.6c3 0 3.6 2 3.6 4.6V21h-3v-6.8c0-1.6 0-3.7-2.3-3.7S11.9 12.3 11.9 14V21H9z"/>',
-  sun: '<path d="M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0-5 1 3h-2zm0 20-1-3h2zM2 12l3-1v2zm20 0-3 1v-2zM4.9 4.9l2.8 1.4-1.4 1.4zm14.2 14.2-2.8-1.4 1.4-1.4zM4.9 19.1l1.4-2.8 1.4 1.4zM19.1 4.9l-1.4 2.8-1.4-1.4z"/>',
-  moon: '<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>',
   arrow: '<path d="M13 5l7 7-7 7-1.4-1.4 4.6-4.6H4v-2h12.2l-4.6-4.6z"/>',
+  close: '<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"/>',
+  bed: '<path d="M3 6h2v6h14a2 2 0 0 1 2 2v5h-2v-2H5v2H3zm5 1a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm4 1h5a3 3 0 0 1 3 3H12z"/>',
+  bath: '<path d="M7 4a3 3 0 0 1 3 3h-2a1 1 0 0 0-2 0v5h15v2a6 6 0 0 1-3 5.2l1 1.8h-2.3l-.7-1.1a6 6 0 0 1-1 .1H9a6 6 0 0 1-1-.1L7.3 21H5l1-1.8A6 6 0 0 1 3 14v-2h1V7a3 3 0 0 1 3-3z"/>',
+  area: '<path d="M3 3h7v2H6.4l4.3 4.3-1.4 1.4L5 6.4V10H3zm11 0h7v7h-2V6.4l-4.3 4.3-1.4-1.4L17.6 5H14zM3 14h2v3.6l4.3-4.3 1.4 1.4L6.4 19H10v2H3zm15.6 5-4.3-4.3 1.4-1.4 4.3 4.3V14h2v7h-7v-2z"/>',
 };
-const icon = (name, cls = 'i') => !ICON[name] ? '' : `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
+const icon = (name, cls = 'i') => (!ICON[name] ? '' : `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`);
 
-/** Equal Housing Opportunity mark, drawn rather than downloaded. */
 const EHO = `<svg class="eho" viewBox="0 0 40 40" role="img" aria-label="Equal Housing Opportunity"><path d="M20 3 2 17h4v20h28V17h4z" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="19" width="16" height="3.5" fill="currentColor"/><rect x="12" y="26" width="16" height="3.5" fill="currentColor"/></svg>`;
 
-export function renderPage({ identity, copy, other, css, script, alternates = [copy, other] }) {
-  const c = copy;
-  const site = identity.site;
-  const url = `${site}${c.path}`;
-  const tel = `tel:${identity.contact.phoneE164}`;
-  const sms = `sms:${identity.contact.phoneE164}`;
-  const wa = `${identity.contact.whatsapp}?text=${encodeURIComponent(c.contact.whatsappGreeting)}`;
-  const mail = `mailto:${identity.contact.email}`;
-  const faq = c.faq.items.map(([q, a]) => [q, fill(a, identity)]);
-  const graph = buildGraph(identity, c, { faq });
-  const img = (p) => (c.lang === 'en' ? '' : '../') + p;
-  const lang = c.lang;
+/* ---------- shared chrome ---------- */
 
-  const serviceLinks = {
-    buy: identity.links.searchHomes,
-    sell: identity.links.homeValue,
-    invest: '#contact',
-  };
-
-  const footerProfiles = identity.profiles.filter((p) => p.footer !== false);
-  const sale = identity.sales[0];
-
+function head({ ctx, page, title, description, graph }) {
+  const { identity, c, all, u, site, preview } = ctx;
+  const url = `${site}${c.paths[page]}`;
   return `<!doctype html>
 <html lang="${c.htmlLang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(c.title)}</title>
-<meta name="description" content="${esc(c.metaDescription)}">
-<link rel="canonical" href="${url}">
-${alternates.map((a) => `<link rel="alternate" hreflang="${a.htmlLang}" href="${site}${a.path}">`).join('\n')}
-<link rel="alternate" hreflang="x-default" href="${site}/">
-<meta name="theme-color" content="#FBF8F3" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#11141C" media="(prefers-color-scheme: dark)">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}">
+${preview ? '<meta name="robots" content="noindex, nofollow">\n' : ''}<link rel="canonical" href="${url}">
+${all.map((x) => `<link rel="alternate" hreflang="${x.htmlLang}" href="${site}${x.paths[page]}">`).join('\n')}
+<link rel="alternate" hreflang="x-default" href="${site}${all[0].paths[page]}">
+<meta name="theme-color" content="#FFFFFF">
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="${esc(identity.name)}">
-<meta property="og:title" content="${esc(c.title)}">
-<meta property="og:description" content="${esc(c.metaDescription)}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}">
 <meta property="og:image" content="${site}/${identity.images.og}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="${c.locale}">
-<meta property="og:locale:alternate" content="${other.locale}">
-<meta property="profile:first_name" content="Margarita">
-<meta property="profile:last_name" content="Cuesta">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="${img('favicon.svg')}" type="image/svg+xml">
-<link rel="apple-touch-icon" href="${img('apple-touch-icon.png')}">
+<link rel="icon" href="${u('/favicon.svg')}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="${u('/apple-touch-icon.png')}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Figtree:wght@400;500;600&display=swap">
-<script>${script.head}</script>
-<style>${css}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap">
+<style>${ctx.css}</style>
 <script type="application/ld+json">${JSON.stringify(graph).replace(/</g, '\\u003c')}</script>
-</head>
-<body>
-<a class="skip" href="#main">${esc(c.skip)}</a>
+</head>`;
+}
 
+function announce(ctx) {
+  const { c, listings, now, u } = ctx;
+  const next = nextOpenHouse(listings, now);
+  if (!next) return '';
+  const { listing: l, oh } = next;
+  return `<div class="announce" data-ends="${oh.end}">
+  <div class="wrap announce-inner">
+    <span class="announce-tag">${esc(c.announce.label)}</span>
+    <span class="announce-text"><strong>${esc(openHouseLabel(oh, c.htmlLang))}</strong> <span class="announce-addr">· ${esc(l.address)}, ${esc(l.locality)}</span></span>
+    <a class="announce-cta" href="${u(c.paths.work)}?goal=buy&amp;listing=${encodeURIComponent(l.id)}">${esc(c.announce.cta)} ${icon('arrow')}</a>
+  </div>
+</div>`;
+}
+
+function header(ctx, page) {
+  const { identity, c, other, u } = ctx;
+  const home = u(c.paths.home);
+  const tel = `tel:${identity.contact.phoneE164}`;
+  const a = (hash) => (page === 'home' ? hash : `${home}${hash}`);
+  return `<a class="skip" href="#main">${esc(c.skip)}</a>
+${announce(ctx)}
 <header class="top">
   <div class="wrap top-inner">
-    <a class="brand" href="${c.path}" aria-label="${esc(identity.name)}">
-      <span class="mono" aria-hidden="true">MC</span>
-      <span class="brand-text"><span class="brand-name">${esc(identity.name)}</span><span class="brand-sub">${esc(identity.team.name)}</span></span>
+    <a class="brand" href="${home}">
+      <span class="brand-name">${esc(identity.name)}</span>
+      <span class="brand-sub">REALTOR® · English &amp; Español</span>
     </a>
     <nav class="nav" aria-label="Primary">
-      <a href="#about">${esc(c.nav.about)}</a>
-      <a href="#buy">${esc(c.nav.buy)}</a>
-      <a href="#sell">${esc(c.nav.sell)}</a>
-      <a href="#sold">${esc(c.nav.sold)}</a>
-      <a href="#contact">${esc(c.nav.contact)}</a>
+      <a href="${a('#listings')}">${esc(c.nav.listings)}</a>
+      <a href="${a('#services')}">${esc(c.nav.services)}</a>
+      <a href="${a('#about')}">${esc(c.nav.about)}</a>
+      <a href="${a('#reviews')}">${esc(c.nav.reviews)}</a>
     </nav>
     <div class="top-actions">
-      <a class="lang" href="${other.path}" hreflang="${other.htmlLang}" lang="${other.htmlLang}">${esc(c.otherLabel)}</a>
-      <button class="theme" type="button" aria-label="${esc(c.themeLabel)}" title="${esc(c.themeLabel)}">${icon('moon', 'i i-moon')}${icon('sun', 'i i-sun')}</button>
-      <a class="btn btn-solid btn-sm" href="${tel}">${icon('phone')}<span>${esc(c.callShort)}</span></a>
+      <a class="lang" href="${u(other.paths[page])}" hreflang="${other.htmlLang}" lang="${other.htmlLang}">${esc(c.otherLabel)}</a>
+      <a class="btn btn-ghost btn-sm hide-sm" href="${tel}">${icon('phone')}<span>${esc(identity.contact.phoneDisplay)}</span></a>
+      <a class="btn btn-ink btn-sm" href="${u(c.paths.work)}">${esc(c.nav.work)}</a>
     </div>
   </div>
-</header>
+</header>`;
+}
 
-<main id="main">
-  <section class="hero">
-    <div class="wrap hero-grid">
-      <div class="hero-copy">
-        <p class="eyebrow">${esc(c.hero.eyebrow)}</p>
-        <h1>${esc(c.hero.title)}</h1>
-        <p class="lede">${esc(c.hero.lede)}</p>
-        <div class="cta-row">
-          <a class="btn btn-solid" href="${tel}">${icon('phone')}<span>${esc(c.hero.ctaCall)} <span class="nowrap">${esc(identity.contact.phoneDisplay)}</span></span></a>
-          <a class="btn btn-line" href="${wa}" rel="noopener">${icon('whatsapp')}<span>${esc(c.hero.ctaWhatsapp)}</span></a>
-          <a class="btn btn-ghost" href="${identity.links.searchHomes}" rel="noopener">${icon('search')}<span>${esc(c.hero.ctaSearch)}</span></a>
-        </div>
-        <p class="hero-firm">${esc(identity.firm.displayWithTeam)}</p>
-      </div>
-      <figure class="hero-photo">
-        <img src="${img(identity.images.portrait)}" srcset="${img(identity.images.portraitSmall)} 640w, ${img(identity.images.portrait)} 1200w" sizes="(min-width: 900px) 420px, 80vw" width="1200" height="1800" alt="${esc(identity.name)}, ${esc(identity.jobTitle[lang])}" fetchpriority="high">
-        <figcaption class="badge">${esc(c.hero.badge)}</figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <section class="stats" aria-labelledby="stats-h">
-    <div class="wrap">
-      <h2 id="stats-h" class="kicker">${esc(c.stats.heading)}</h2>
-      <ul class="stat-row">
-        ${identity.team.stats.map((s) => `<li><span class="stat-v">${esc(s.value)}</span><span class="stat-l">${esc(s[lang])}</span></li>`).join('\n        ')}
-      </ul>
-      <p class="fine">${esc(c.stats.note)}</p>
-    </div>
-  </section>
-
-  <section id="about" class="about">
-    <div class="wrap about-grid">
-      <figure class="about-photo">
-        <img src="${img(identity.images.seated)}" srcset="${img(identity.images.seatedSmall)} 640w, ${img(identity.images.seated)} 1200w" sizes="(min-width: 900px) 380px, 90vw" width="1200" height="1800" alt="${esc(identity.name)}" loading="lazy">
-      </figure>
-      <div>
-        <h2>${esc(c.about.heading)}</h2>
-        ${c.about.paras.map((p) => `<p>${esc(p)}</p>`).join('\n        ')}
-        <h3>${esc(c.about.credentialsHeading)}</h3>
-        <ul class="creds">
-          <li><strong>${esc(c.about.licenseLabel)}</strong> #${esc(identity.license.number)}</li>
-          ${identity.education.map((e) => `<li>${esc(e[lang])}, ${esc(e.name)}, ${esc(e.place)}</li>`).join('\n          ')}
-          ${identity.awards.map((a) => `<li>${esc(a[lang])}, ${a.year}</li>`).join('\n          ')}
-          ${identity.credentials.map((x) => `<li>${esc(x[lang])}</li>`).join('\n          ')}
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="services" aria-labelledby="services-h">
-    <div class="wrap">
-      <h2 id="services-h">${esc(c.services.heading)}</h2>
-      <div class="cards">
-        ${c.services.items
-          .map(
-            (s, i) => `<article class="card" id="${s.id}">
-          <span class="card-n">0${i + 1}</span>
-          <h3>${esc(s.title)}</h3>
-          <p>${esc(s.body)}</p>
-          <a class="link" href="${serviceLinks[s.id]}"${serviceLinks[s.id].startsWith('http') ? ' rel="noopener"' : ''}>${esc(s.cta)} ${icon('arrow')}</a>
-        </article>`,
-          )
-          .join('\n        ')}
-      </div>
-    </div>
-  </section>
-
-  <section class="steps" aria-labelledby="steps-h">
-    <div class="wrap">
-      <h2 id="steps-h">${esc(c.steps.heading)}</h2>
-      <p class="section-intro">${esc(c.steps.intro)}</p>
-      <ol class="step-list">
-        ${c.steps.items.map(([t, d]) => `<li><h3>${esc(t)}</h3><p>${esc(d)}</p></li>`).join('\n        ')}
-      </ol>
-    </div>
-  </section>
-
-  <section id="sold" class="sold" aria-labelledby="sold-h">
-    <div class="wrap">
-      <h2 id="sold-h">${esc(c.sold.heading)}</h2>
-      <article class="sale">
-        <div class="sale-media">
-          <img src="${img(sale.image)}" width="1600" height="431" alt="${esc(c.sold.alt)}" loading="lazy">
-          <img src="${img(sale.imageInterior)}" width="680" height="460" alt="${esc(c.sold.altInterior)}" loading="lazy">
-        </div>
-        <div class="sale-text">
-          <span class="tag">${esc(c.sold.label)}</span>
-          <h3>${esc(sale.address)}<br><span>${esc(sale.locality)}, ${esc(sale.region)} ${esc(sale.postalCode)}</span></h3>
-          <p>${esc(sale[lang])}</p>
-          <p class="fine">${esc(identity.name)} ${esc(c.sold.withLabel)} ${esc(sale.with)}</p>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <section class="team" aria-labelledby="team-h">
-    <div class="wrap team-inner">
-      <h2 id="team-h">${esc(c.team.heading)}</h2>
-      <p>${esc(c.team.body)}</p>
-      <a class="link" href="${identity.team.url}" rel="noopener">${esc(c.team.cta)} ${icon('arrow')}</a>
-    </div>
-  </section>
-
-  <section class="faq" aria-labelledby="faq-h">
-    <div class="wrap narrow">
-      <h2 id="faq-h">${esc(c.faq.heading)}</h2>
-      ${faq.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n      ')}
-    </div>
-  </section>
-
-  <section id="contact" class="contact" aria-labelledby="contact-h">
-    <div class="wrap contact-grid">
-      <div>
-        <h2 id="contact-h">${esc(c.contact.heading)}</h2>
-        <p>${esc(c.contact.intro)}</p>
-        <ul class="contact-list">
-          <li><a href="${tel}">${icon('phone')}<span><small>${esc(c.contact.call)}</small>${esc(identity.contact.phoneDisplay)}</span></a></li>
-          <li><a href="${sms}">${icon('chat')}<span><small>${esc(c.contact.text)}</small>${esc(identity.contact.phoneDisplay)}</span></a></li>
-          <li><a href="${wa}" rel="noopener">${icon('whatsapp')}<span><small>${esc(c.contact.whatsapp)}</small>${esc(identity.contact.phoneDisplay)}</span></a></li>
-          <li><a href="${mail}">${icon('mail')}<span><small>${esc(c.contact.email)}</small>${esc(identity.contact.email)}</span></a></li>
-        </ul>
-      </div>
-      <form class="form" action="${mail}" method="post" enctype="text/plain" data-email="${identity.contact.email}" data-wa="${identity.contact.whatsapp}" data-subject="${esc(c.contact.form.subject)}">
-        <label>${esc(c.contact.form.name)}<input name="name" autocomplete="name" required></label>
-        <div class="form-2">
-          <label>${esc(c.contact.form.phone)}<input name="phone" type="tel" autocomplete="tel"></label>
-          <label>${esc(c.contact.form.email)}<input name="email" type="email" autocomplete="email"></label>
-        </div>
-        <div class="form-2">
-          <label>${esc(c.contact.form.goal)}<select name="goal">${c.contact.form.goals.map((g) => `<option>${esc(g)}</option>`).join('')}</select></label>
-          <label>${esc(c.contact.form.language)}<select name="language">${c.contact.form.languages.map((g) => `<option>${esc(g)}</option>`).join('')}</select></label>
-        </div>
-        <label>${esc(c.contact.form.message)}<textarea name="message" rows="4"></textarea></label>
-        <div class="cta-row">
-          <button class="btn btn-solid" type="submit" value="email">${icon('mail')}<span>${esc(c.contact.form.submitEmail)}</span></button>
-          <button class="btn btn-line" type="submit" value="whatsapp" data-channel="whatsapp">${icon('whatsapp')}<span>${esc(c.contact.form.submitWhatsapp)}</span></button>
-        </div>
-        <p class="fine">${esc(c.contact.form.note)}</p>
-      </form>
-    </div>
-  </section>
-</main>
-
-<footer class="foot">
+function footer(ctx) {
+  const { identity, c, other, u, page } = ctx;
+  const tel = `tel:${identity.contact.phoneE164}`;
+  const mail = `mailto:${identity.contact.email}`;
+  return `<footer class="foot">
   <div class="wrap foot-grid">
-    <div>
+    <div class="foot-id">
       <p class="foot-name">${esc(identity.name)}</p>
-      <p>${esc(identity.jobTitle[lang])}, REALTOR®<br>${esc(identity.firm.displayWithTeam)}</p>
+      <p>${esc(identity.jobTitle[c.lang])}, REALTOR®<br>${esc(identity.firm.displayWithTeam)}</p>
       <p>${esc(c.footer.licensed)} · ${esc(c.footer.licenseNo)}${esc(identity.license.number)}</p>
+      <ul class="social">
+        ${identity.profiles.filter((p) => p.footer !== false).map((p) => `<li><a href="${p.url}" rel="me noopener" aria-label="${esc(p.label)}">${ICON[p.id] ? icon(p.id) : `<span class="social-txt">${esc(p.label)}</span>`}</a></li>`).join('\n        ')}
+      </ul>
     </div>
     <div>
+      <p class="foot-h">${esc(c.footer.office)}</p>
       <p><a href="${tel}">${esc(identity.contact.phoneDisplay)}</a><br><a href="${mail}">${esc(identity.contact.email)}</a></p>
-      <p>${esc(c.footer.office)}: ${esc(officeLine(identity))} · <a href="tel:${identity.team.phoneE164}">${esc(identity.team.phoneDisplay)}</a></p>
-      <ul class="social">
-        ${footerProfiles.map((p) => `<li><a href="${p.url}" rel="me noopener" aria-label="${esc(p.label)}">${ICON[p.id] ? icon(p.id) : `<span class="social-txt">${esc(p.label)}</span>`}</a></li>`).join('\n        ')}
-      </ul>
+      <p>${esc(officeLine(identity))}</p>
     </div>
     <div class="foot-legal">
+      <p class="foot-h">${esc(c.footer.licenseWith)}</p>
+      <div class="logos">
+        <img src="${u('/' + identity.firm.logo)}" alt="${esc(identity.firm.brand)}" width="380" height="180" loading="lazy">
+        <span class="logo-tile"><img src="${u('/' + identity.team.logo)}" alt="${esc(identity.team.name)}" width="162" height="186" loading="lazy"></span>
+      </div>
       <p class="eho-row">${EHO}<span>${esc(c.footer.eho)}</span></p>
       <p class="fine">${esc(c.footer.disclaimer)}</p>
     </div>
   </div>
   <div class="wrap verse">
     <p>“${esc(c.footer.verse)}” <span>${esc(c.footer.verseRef)}</span></p>
-    <p class="fine">© <span data-year>2026</span> ${esc(identity.name)} · <a href="${other.path}" hreflang="${other.htmlLang}">${esc(c.otherLabel)}</a></p>
+    <p class="fine">© <span data-year>2026</span> ${esc(identity.name)} · <a href="${u(other.paths[page])}" hreflang="${other.htmlLang}">${esc(c.otherLabel)}</a></p>
   </div>
-</footer>
+</footer>`;
+}
 
-<a class="float-call" href="${tel}" aria-label="${esc(c.contact.call)} ${esc(identity.contact.phoneDisplay)}">${icon('phone')}<span>${esc(c.callShort)}</span></a>
-<script>${script.body}</script>
+function popup(ctx) {
+  const { c, other, u, identity } = ctx;
+  const p = c.popup;
+  const pdf = u('/' + ctx.guidePdf[c.lang]);
+  return `<dialog class="pop" id="guide" aria-labelledby="guide-title" data-api="${esc(identity.api.subscribe)}" data-lang="${c.lang}" data-pdf="${pdf}">
+  <button class="pop-x" type="button" data-close aria-label="${esc(p.close)}">${icon('close')}</button>
+  <div class="pop-art" aria-hidden="true"><span>10</span></div>
+  <div class="pop-body">
+    <p class="eyebrow">${esc(p.eyebrow)}</p>
+    <h2 id="guide-title">${esc(p.title)}</h2>
+    <p>${esc(p.body)}</p>
+    <form class="pop-form">
+      <label class="sr" for="g-name">${esc(p.name)}</label><input id="g-name" name="name" placeholder="${esc(p.name)}" autocomplete="given-name" required>
+      <label class="sr" for="g-email">${esc(p.email)}</label><input id="g-email" name="email" type="email" placeholder="${esc(p.email)}" autocomplete="email" required>
+      <button class="btn btn-ink" type="submit">${esc(p.submit)}</button>
+    </form>
+    <div class="pop-done" hidden>
+      <p class="pop-thanks">${esc(p.thanks)}</p>
+      <a class="btn btn-ink" href="${pdf}" download>${esc(p.download)}</a>
+    </div>
+    <a class="pop-lang" href="${u(other.paths.home)}?guide=1" hreflang="${other.htmlLang}" lang="${other.htmlLang}">${esc(p.switchLang)}</a>
+    <p class="fine">${esc(p.privacy)}</p>
+  </div>
+</dialog>`;
+}
+
+function page(ctx, pageName, body, { title, description, graph }) {
+  ctx.page = pageName;
+  return `${head({ ctx, page: pageName, title, description, graph })}
+<body class="page-${pageName}">
+${header(ctx, pageName)}
+<main id="main">
+${body}
+</main>
+${footer(ctx)}
+${popup(ctx)}
+<a class="float-call" href="tel:${ctx.identity.contact.phoneE164}">${icon('phone')}<span>${esc(ctx.c.callShort)}</span></a>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script>${ctx.script}</script>
 </body>
 </html>
 `;
+}
+
+/* ---------- home ---------- */
+
+// Clip shapes for the "where are you headed" stage, on a 500x500 board:
+// a house assembled from slices, a floor plan, and a block of lots.
+const CLIPS = [
+  `<path class="path" d="M120 70h50v60h-50z"/>
+   <path class="path" d="M250 40 470 210H30z"/>
+   <path class="path" d="M70 222h360v108H70z"/>
+   <path class="path" d="M70 342h360v96H70z"/>
+   <path class="path" d="M20 450h460v30H20z"/>`,
+  `<rect class="path" x="20" y="20" width="200" height="280" rx="14"/>
+   <rect class="path" x="20" y="320" width="200" height="160" rx="14"/>
+   <rect class="path" x="240" y="20" width="240" height="140" rx="14"/>
+   <rect class="path" x="240" y="180" width="110" height="160" rx="14"/>
+   <rect class="path" x="370" y="180" width="110" height="160" rx="14"/>
+   <rect class="path" x="240" y="360" width="240" height="120" rx="14"/>`,
+  Array.from({ length: 9 })
+    .map((_, i) => `<rect class="path" x="${(i % 3) * 160 + 20}" y="${Math.floor(i / 3) * 160 + 20}" width="140" height="140" rx="10"/>`)
+    .join('\n   '),
+];
+
+function journeys(ctx) {
+  const { c, u, journeyImages } = ctx;
+  const j = c.journeys;
+  return `<section class="journeys" aria-labelledby="j-h">
+  <div class="wrap j-grid">
+    <div class="j-menu">
+      <p class="eyebrow" id="j-h">${esc(j.eyebrow)}</p>
+      <ol class="j-list">
+        ${j.items
+          .map(
+            (it, i) => `<li><button type="button" class="j-item${i === 0 ? ' is-on' : ''}" data-j="${i}" data-target="#svc-${it.id}" aria-pressed="${i === 0}">
+          <span class="j-num">0${i + 1}</span><span class="j-name">${esc(it.lines[0])}<br>${esc(it.lines[1])}</span>
+        </button></li>`,
+          )
+          .join('\n        ')}
+      </ol>
+      <p class="j-hint">${esc(j.hint)}</p>
+    </div>
+    <div class="j-stage">
+      <div class="j-glow" aria-hidden="true"></div>
+      <svg viewBox="0 0 500 500" role="img" aria-label="${esc(j.items.map((x) => x.lines.join(' ')).join(', '))}">
+        <defs>
+          ${CLIPS.map((p, i) => `<clipPath id="j-clip-${i}">${p}</clipPath>`).join('\n          ')}
+        </defs>
+        ${journeyImages
+          .map(
+            (src, i) => `<g class="j-layer${i === 0 ? ' is-on' : ''}" data-layer="${i}" clip-path="url(#j-clip-${i})"><image href="${u('/' + src)}" width="500" height="500" preserveAspectRatio="xMidYMid slice"/></g>`,
+          )
+          .join('\n        ')}
+      </svg>
+    </div>
+  </div>
+</section>`;
+}
+
+function listingCard(ctx, l) {
+  const { c, u, now } = ctx;
+  const L = c.listings;
+  const oh = (l.openHouses || []).filter((o) => new Date(o.end) > now)[0];
+  const sold = l.status === 'sold';
+  const book = `${u(c.paths.work)}?goal=buy&amp;listing=${encodeURIComponent(l.id)}`;
+  return `<article class="flip${sold ? ' is-sold' : ''}" data-flip>
+  <div class="flip-inner">
+    <div class="face front">
+      <div class="photo">
+        <img src="${u('/' + l.photos[0])}" alt="${esc(l.address)}, ${esc(l.locality)}" width="1280" height="720" loading="lazy">
+        ${oh ? `<span class="chip" data-ends="${oh.end}"><b>${esc(L.openHouse)}</b> ${esc(openHouseLabel(oh, c.htmlLang))}</span>` : ''}
+      </div>
+      <div class="front-body">
+        <p class="kick">${esc(sold ? L.sold : L.active)}${l.mls ? ` · MLS #${esc(l.mls)}` : ''}</p>
+        <h3>${esc(l.address)}</h3>
+        <p class="loc">${esc(l.locality)}, ${esc(l.region)} ${esc(l.postalCode)}</p>
+        <div class="front-foot">
+          ${l.price && !sold ? `<p class="price">${money(l.price)}</p>` : ''}
+          <span class="hover-hint">${esc(L.flip)} ${icon('arrow')}</span>
+          <button class="flip-btn" type="button" aria-expanded="false">${esc(L.flip)} ${icon('arrow')}</button>
+        </div>
+      </div>
+    </div>
+    <div class="face back">
+      <div class="specs">
+        <div class="spec">${icon('bed')}<strong>${l.beds}</strong><span>${esc(L.beds)}</span></div>
+        <div class="spec">${icon('bath')}<strong>${l.baths}</strong><span>${esc(L.baths)}</span></div>
+        <div class="spec">${icon('area')}<strong>${Number(l.sqft).toLocaleString('en-US')}</strong><span>${esc(L.sqft)}</span></div>
+      </div>
+      <h3>${esc(l.address)}</h3>
+      <p class="back-text">${esc(l.highlights[c.lang])}</p>
+      ${sold ? '' : `<a class="btn btn-ink btn-block" href="${book}">${esc(L.book)}</a>`}
+      ${l.url ? `<a class="link" href="${l.url}" rel="noopener">${esc(L.photos)} ${icon('arrow')}</a>` : ''}
+      <button class="flip-btn flip-back" type="button">${esc(L.flipBack)}</button>
+    </div>
+  </div>
+</article>`;
+}
+
+function homeBody(ctx) {
+  const { identity, c, u, listings } = ctx;
+  const tel = `tel:${identity.contact.phoneE164}`;
+  const wa = `${identity.contact.whatsapp}?text=${encodeURIComponent(c.lang === 'es' ? 'Hola Margarita, la encontré por su sitio web.' : 'Hi Margarita, I found you through your website.')}`;
+  const h = c.hero;
+  const work = u(c.paths.work);
+  const cards = [...listings.filter((l) => l.status === 'active'), ...listings.filter((l) => l.status === 'sold')];
+
+  return `<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">${esc(h.eyebrow)}</p>
+      <h1><span>${esc(h.titleA)}</span> <span>${esc(h.titleB)}</span> <em>${esc(h.titleC)}</em></h1>
+      <p class="lede">${esc(h.lede)}</p>
+      <div class="cta-row">
+        <a class="btn btn-ink" href="${work}">${esc(h.ctaWork)} ${icon('arrow')}</a>
+        <a class="btn btn-tiff" href="${wa}" rel="noopener">${icon('whatsapp')}<span>${esc(h.ctaWhatsapp)}</span></a>
+      </div>
+      <p class="hero-call"><a href="${tel}">${icon('phone')} ${esc(identity.contact.phoneDisplay)}</a></p>
+    </div>
+    <figure class="hero-photo">
+      <div class="hero-arch" aria-hidden="true"></div>
+      <img src="${u('/' + identity.images.portrait)}" srcset="${u('/' + identity.images.portraitSmall)} 640w, ${u('/' + identity.images.portrait)} 1200w" sizes="(min-width: 900px) 440px, 82vw" width="1200" height="1800" alt="${esc(identity.name)}, REALTOR®" fetchpriority="high">
+      <figcaption class="badge">${esc(h.badge)}</figcaption>
+    </figure>
+  </div>
+</section>
+
+${journeys(ctx)}
+
+<section id="listings" class="listings" aria-labelledby="listings-h">
+  <div class="wrap listings-grid">
+    <div class="listings-intro">
+      <p class="eyebrow">${esc(c.listings.eyebrow)}</p>
+      <h2 id="listings-h">${esc(c.listings.heading)}</h2>
+      <p class="lede">${esc(c.listings.intro)}</p>
+      <div class="cta-row">
+        <button class="btn btn-ink" type="button" data-open-guide>${esc(c.listings.alerts)} ${icon('arrow')}</button>
+        <a class="btn btn-ghost" href="${identity.links.searchHomes}" rel="noopener">${esc(c.listings.search)}</a>
+      </div>
+    </div>
+    ${cards.length ? `<div class="cards-row">\n      ${cards.map((l) => listingCard(ctx, l)).join('\n      ')}\n    </div>` : `<p class="lede">${esc(c.listings.empty)}</p>`}
+  </div>
+</section>
+
+<section id="services" class="services" aria-labelledby="services-h">
+  <div class="wrap">
+    <p class="eyebrow">${esc(c.services.eyebrow)}</p>
+    <h2 id="services-h">${esc(c.services.heading)}</h2>
+    <div class="svc-grid">
+      ${c.services.items
+        .map(
+          (s, i) => `<article class="svc" id="svc-${s.id}">
+        <span class="svc-n">0${i + 1}</span>
+        <h3>${esc(s.title)}</h3>
+        <p>${esc(s.body)}</p>
+        <a class="link" href="${work}?goal=${s.id}">${esc(s.cta)} ${icon('arrow')}</a>
+      </article>`,
+        )
+        .join('\n      ')}
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about" aria-labelledby="about-h">
+  <div class="wrap about-grid">
+    <figure class="about-photo">
+      <img src="${u('/' + identity.images.seated)}" srcset="${u('/' + identity.images.seatedSmall)} 640w, ${u('/' + identity.images.seated)} 1200w" sizes="(min-width: 900px) 420px, 90vw" width="1200" height="1800" alt="${esc(identity.name)}" loading="lazy">
+    </figure>
+    <div class="about-copy">
+      <p class="eyebrow">${esc(c.about.eyebrow)}</p>
+      <h2 id="about-h">${esc(c.about.heading)}</h2>
+      ${c.about.paras.map((p) => `<p>${esc(p)}</p>`).join('\n      ')}
+      <p class="signature">${esc(c.about.signature)}</p>
+      <ul class="creds">
+        <li>${esc(c.about.licenseLabel)} #${esc(identity.license.number)}</li>
+        ${identity.credentials.map((x) => `<li>${esc(x[c.lang])}</li>`).join('\n        ')}
+        ${identity.education.map((e) => `<li>${esc(e[c.lang])}, ${esc(e.name)}, ${esc(e.place)}</li>`).join('\n        ')}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="promises" aria-labelledby="promises-h">
+  <div class="wrap">
+    <p class="eyebrow" id="promises-h">${esc(c.promises.eyebrow)}</p>
+    <ol class="promise-grid">
+      ${c.promises.items.map(([t, b]) => `<li><h3>${esc(t)}</h3><p>${esc(b)}</p></li>`).join('\n      ')}
+    </ol>
+  </div>
+</section>
+
+<section id="reviews" class="reviews" aria-labelledby="reviews-h">
+  <div class="wrap">
+    <p class="eyebrow">${esc(c.reviews.eyebrow)}</p>
+    <h2 id="reviews-h">${esc(c.reviews.heading)}</h2>
+    <div class="quote-grid">
+      ${identity.testimonials.map((t) => `<figure class="quote"><blockquote lang="${t.lang}"><p>${esc(t.text)}</p></blockquote><figcaption>${esc(t.name)}</figcaption></figure>`).join('\n      ')}
+    </div>
+  </div>
+</section>
+
+<section class="giveaway" aria-labelledby="give-h">
+  <div class="wrap give-inner">
+    <div class="give-art" aria-hidden="true"><span>10</span></div>
+    <div>
+      <p class="eyebrow">${esc(c.giveaway.eyebrow)}</p>
+      <h2 id="give-h">${esc(c.giveaway.heading)}</h2>
+      <p>${esc(c.giveaway.body)}</p>
+      <button class="btn btn-ink" type="button" data-open-guide>${esc(c.giveaway.cta)} ${icon('arrow')}</button>
+    </div>
+  </div>
+</section>
+
+<section class="closer" aria-labelledby="closer-h">
+  <div class="wrap closer-inner">
+    <h2 id="closer-h">${esc(c.cta.heading)}</h2>
+    <p>${esc(c.cta.body)}</p>
+    <div class="cta-row">
+      <a class="btn btn-tiff" href="${work}">${esc(c.cta.work)} ${icon('arrow')}</a>
+      <a class="btn btn-line-light" href="${tel}">${icon('phone')}<span>${esc(c.cta.call)} ${esc(identity.contact.phoneDisplay)}</span></a>
+    </div>
+  </div>
+</section>`;
+}
+
+/* ---------- work with me ---------- */
+
+const opt = (arr, blank = false) => (blank ? '<option value="">—</option>' : '') + arr.map((o) => `<option>${esc(o)}</option>`).join('');
+const radios = (name, arr, req = false) =>
+  `<div class="pills">${arr.map((o, i) => `<label class="pill"><input type="radio" name="${name}" value="${esc(o)}"${req && i === 0 ? ' required' : ''}><span>${esc(o)}</span></label>`).join('')}</div>`;
+
+function workBody(ctx) {
+  const { identity, c, listings } = ctx;
+  const W = c.work;
+  const F = W.fields;
+  const timeRow = (n) => `<div class="time-row">
+            <label>${esc(F.day)} ${n}<input type="date" name="day${n}"${n === 1 ? ' data-req-nobooking' : ''}></label>
+            <label>${esc(F.slot)} ${n}<select name="slot${n}">${opt(F.slots)}</select></label>
+          </div>`;
+  return `<section class="work">
+  <div class="wrap work-grid">
+    <aside class="work-side">
+      <p class="eyebrow">${esc(W.eyebrow)}</p>
+      <h1>${esc(W.heading)}</h1>
+      <p class="lede">${esc(W.lede)}</p>
+      <figure class="work-portrait"><img src="${ctx.u('/' + identity.images.portraitSmall)}" width="640" height="960" alt="${esc(identity.name)}"></figure>
+      <p class="fine">${esc(W.privacy)}</p>
+    </aside>
+    <form class="intake" novalidate data-api="${esc(identity.api.leads)}" data-booking="${esc(identity.links.booking)}" data-email="${identity.contact.email}" data-wa="${identity.contact.whatsapp}" data-subject="${esc(W.subject)}" data-lang="${c.lang}">
+      <ol class="stepper">${W.steps.map((s, i) => `<li${i === 0 ? ' class="is-on" aria-current="step"' : ''}><span>${i + 1}</span><em>${esc(s)}</em></li>`).join('')}</ol>
+      <p class="listing-chip" hidden><span>${esc(F.listing)}:</span> <strong data-listing-name></strong><input type="hidden" name="listing"></p>
+      <script type="application/json" data-listings>${JSON.stringify(listings.map((l) => ({ id: l.id, name: `${l.address}, ${l.locality}` }))).replace(/</g, '\\u003c')}</script>
+
+      <fieldset class="step is-on" data-step="1">
+        <legend>${esc(W.steps[0])}</legend>
+        <div class="row-2">
+          <label>${esc(F.firstName)}<input name="firstName" autocomplete="given-name" required></label>
+          <label>${esc(F.lastName)}<input name="lastName" autocomplete="family-name" required></label>
+        </div>
+        <div class="row-2">
+          <label>${esc(F.phone)}<input name="phone" type="tel" autocomplete="tel" required></label>
+          <label>${esc(F.email)}<input name="email" type="email" autocomplete="email" required></label>
+        </div>
+        <div class="q"><span class="q-l">${esc(F.contactPref)}</span>${radios('contactPref', F.contactPrefs, true)}</div>
+        <div class="q"><span class="q-l">${esc(F.language)}</span>${radios('language', F.languages, true)}</div>
+      </fieldset>
+
+      <fieldset class="step" data-step="2" hidden>
+        <legend>${esc(W.steps[1])}</legend>
+        <div class="q"><span class="q-l">${esc(F.goal)}</span>
+          <div class="pills pills-lg">${Object.entries(F.goals).map(([k, v], i) => `<label class="pill"><input type="radio" name="goal" value="${k}"${i === 0 ? ' required' : ''}><span>${esc(v)}</span></label>`).join('')}</div>
+        </div>
+        <label>${esc(F.timeline)}<select name="timeline">${opt(F.timelines, true)}</select></label>
+        <div class="q"><span class="q-l">${esc(F.agent)}</span>${radios('agent', F.yesNo)}</div>
+      </fieldset>
+
+      <fieldset class="step" data-step="3" hidden>
+        <legend>${esc(W.steps[2])}</legend>
+        <div class="when" data-when="buy both invest">
+          <label>${esc(F.areas)}<input name="areas" placeholder="${esc(F.areasHint)}"></label>
+          <div class="row-3">
+            <label>${esc(F.budget)}<select name="budget">${opt(F.budgets, true)}</select></label>
+            <label>${esc(F.beds)}<select name="beds">${opt(['1+', '2+', '3+', '4+', '5+'], true)}</select></label>
+            <label>${esc(F.baths)}<select name="baths">${opt(['1+', '1.5+', '2+', '3+'], true)}</select></label>
+          </div>
+          <label>${esc(F.homeType)}<select name="homeType">${opt(F.homeTypes, true)}</select></label>
+          <div class="q"><span class="q-l">${esc(F.preapproved)}</span>${radios('preapproved', F.preapprovals)}</div>
+          <div class="row-2">
+            <div class="q"><span class="q-l">${esc(F.firstTime)}</span>${radios('firstTime', F.yesNo)}</div>
+            <label>${esc(F.currentLease)}<input name="leaseEnds" type="month"></label>
+          </div>
+          <label>${esc(F.mustHaves)}<textarea name="mustHaves" rows="2" placeholder="${esc(F.mustHavesHint)}"></textarea></label>
+        </div>
+        <div class="when" data-when="sell both">
+          <label>${esc(F.sellAddress)}<input name="sellAddress" autocomplete="street-address"></label>
+          <div class="row-2">
+            <label>${esc(F.sellReason)}<input name="sellReason"></label>
+            <label>${esc(F.sellOwed)}<input name="sellOwed" inputmode="numeric"></label>
+          </div>
+        </div>
+        <div class="when" data-when="lease">
+          <label>${esc(F.leaseAddress)}<input name="leaseAddress"></label>
+          <label>${esc(F.leaseAvailable)}<input name="leaseAvailable" type="date"></label>
+        </div>
+        <label>${esc(F.notes)}<textarea name="notes" rows="3"></textarea></label>
+      </fieldset>
+
+      <fieldset class="step" data-step="4" hidden>
+        <legend>${esc(W.steps[3])}</legend>
+        <div class="q"><span class="q-l">${esc(F.meeting)}</span>${radios('meeting', F.meetings, true)}</div>
+        <div class="times" data-no-booking>
+          <p class="q-l">${esc(F.times)}</p>
+          ${[1, 2, 3].map(timeRow).join('\n          ')}
+          <p class="fine">${esc(F.timesHint)}</p>
+        </div>
+        <p class="booking-intro" data-booking-only hidden>${esc(W.bookingIntro)}</p>
+        <label class="consent"><input type="checkbox" name="consent" required> <span>${esc(F.consent)}</span></label>
+      </fieldset>
+
+      <div class="form-nav">
+        <button class="btn btn-ghost" type="button" data-back hidden>${esc(W.back)}</button>
+        <button class="btn btn-ink" type="button" data-next>${esc(W.next)} ${icon('arrow')}</button>
+        <button class="btn btn-ink" type="submit" data-submit hidden>${esc(W.submit)} ${icon('arrow')}</button>
+      </div>
+
+      <div class="done" hidden tabindex="-1">
+        <h2>${esc(W.doneTitle)}</h2>
+        <p>${esc(W.doneBody)}</p>
+        <a class="btn btn-tiff" data-booking-link hidden href="#" rel="noopener">${esc(W.bookingCta)} ${icon('arrow')}</a>
+        <div data-fallback hidden>
+          <p class="fine">${esc(W.doneEmail)}</p>
+          <div class="cta-row">
+            <a class="btn btn-ink" data-send-email href="#">${icon('mail')}<span>${esc(W.sendEmail)}</span></a>
+            <a class="btn btn-tiff" data-send-wa href="#" rel="noopener">${icon('whatsapp')}<span>${esc(W.sendWhatsapp)}</span></a>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>`;
+}
+
+/* ---------- entry ---------- */
+
+/**
+ * Renders every page for one language and returns { [path]: html }.
+ * base: prefix for internal links ('' on the real domain, '/repo-name' on GitHub Pages).
+ */
+export function renderLanguage({ identity, listings, copy, all, css, script, base = '', preview = false, now = new Date(), guidePdf, journeyImages }) {
+  const other = all.find((x) => x !== copy);
+  const ctx = { identity, listings, c: copy, all, other, css, script, preview, now, guidePdf, journeyImages, site: identity.site, u: (p) => `${base}${p}` };
+  const home = page(ctx, 'home', homeBody(ctx), {
+    title: copy.title,
+    description: copy.metaDescription,
+    graph: buildGraph(identity, copy, { page: 'home', listings, now }),
+  });
+  const work = page(ctx, 'work', workBody(ctx), {
+    title: copy.work.title,
+    description: copy.work.metaDescription,
+    graph: buildGraph(identity, copy, { page: 'work', listings, now }),
+  });
+  return { [copy.paths.home]: home, [copy.paths.work]: work };
 }
