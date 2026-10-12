@@ -1,0 +1,108 @@
+{
+  "$comment": "The one record of who Margarita is. Every page, the JSON-LD graph, the footer, llms.txt and the tests read from here. Change a fact here and nowhere else. See docs/ENTITY.md for why each field exists.",
+
+  "site": "https://www.margaritacuesta.com",
+
+  "name": "Margarita Cuesta",
+  "alternateNames": ["Margarita C", "Margarita Tu Realtor", "MargaritaTuRealtor"],
+  "jobTitle": { "en": "Real Estate Broker", "es": "Corredora de bienes raíces" },
+  "description": {
+    "en": "Margarita Cuesta is a bilingual (English and Spanish) real estate broker and REALTOR® with the Corrales Real Estate Team with The Insight Group in Raleigh, North Carolina, helping buyers, sellers and investors across Raleigh, Durham and the Triangle.",
+    "es": "Margarita Cuesta es corredora de bienes raíces y REALTOR® bilingüe (español e inglés) del Corrales Real Estate Team with The Insight Group en Raleigh, Carolina del Norte. Ayuda a compradores, vendedores e inversionistas en Raleigh, Durham y todo el Triángulo."
+  },
+
+  "contact": {
+    "email": "margarita@corralesre.com",
+    "phoneDisplay": "(919) 432-2204",
+    "phoneE164": "+19194322204",
+    "whatsapp": "https://wa.me/19194322204"
+  },
+
+  "license": {
+    "number": "358832",
+    "state": "North Carolina",
+    "issuer": "North Carolina Real Estate Commission",
+    "issuerUrl": "https://www.ncrec.gov/"
+  },
+
+  "languages": ["en", "es"],
+  "areaServed": ["Raleigh", "Durham", "Cary", "Apex", "Wake County", "the Research Triangle"],
+
+  "team": {
+    "name": "Corrales Real Estate Team",
+    "url": "https://corralesre.com/",
+    "lead": "Oscar Corrales",
+    "phoneDisplay": "(919) 349-7110",
+    "phoneE164": "+19193497110",
+    "address": {
+      "street": "1715 Pacific Dr.",
+      "locality": "Raleigh",
+      "region": "NC",
+      "postalCode": "27609",
+      "country": "US"
+    },
+    "stats": [
+      { "value": "15+", "en": "years of experience", "es": "años de experiencia" },
+      { "value": "800+", "en": "successful transactions", "es": "transacciones exitosas" },
+      { "value": "2,500+", "en": "referrals", "es": "referidos" },
+      { "value": "Top 1%", "en": "producers in the Triangle", "es": "de productores en el Triángulo" }
+    ],
+    "statsSource": "Corrales Real Estate Team, CRE Services pitch deck (2026)"
+  },
+
+  "firm": {
+    "name": "The Insight Group",
+    "displayWithTeam": "Corrales Real Estate Team with The Insight Group",
+    "brand": "Casa 1-2-3 de Insight Group"
+  },
+
+  "links": {
+    "searchHomes": "https://margaritaturealtor.corralesre.com/",
+    "homeValue": "https://margaritaturealtor.corralesre.com/evaluation",
+    "teamProfile": "https://corralesre.com/agents/Margarita-Cuesta/8898384"
+  },
+
+  "profiles": [
+    { "id": "instagram", "label": "Instagram", "handle": "@margaritaturealtor", "url": "https://www.instagram.com/margaritaturealtor/" },
+    { "id": "tiktok", "label": "TikTok", "handle": "@margaritaturealtor", "url": "https://www.tiktok.com/@margaritaturealtor" },
+    { "id": "linkedin", "label": "LinkedIn", "handle": "Margarita Cuesta", "url": "https://www.linkedin.com/in/margarita-cuesta-baa6245/" },
+    { "id": "team", "label": "Corrales Real Estate Team", "handle": "Team profile", "url": "https://corralesre.com/agents/Margarita-Cuesta/8898384", "footer": false }
+  ],
+
+  "education": [
+    { "name": "Fundación Universitaria Los Libertadores", "place": "Bogotá, Colombia", "en": "Master's degree in Communications", "es": "Maestría en Comunicaciones" }
+  ],
+
+  "awards": [
+    { "year": 2020, "en": "LEAD Award, Healthcare Businesswomen's Association (Miami chapter)", "es": "Premio LEAD, Healthcare Businesswomen's Association (capítulo de Miami)" },
+    { "year": 2017, "en": "Recognition of Excellence Award, South Florida Manufacturers Association", "es": "Premio al Reconocimiento a la Excelencia, South Florida Manufacturers Association" }
+  ],
+
+  "credentials": [
+    { "en": "Certified in problem solving and decision making, Kepner-Tregoe", "es": "Certificada en resolución de problemas y toma de decisiones, Kepner-Tregoe" },
+    { "en": "Lean manufacturing yellow belt (Operational Excellence)", "es": "Cinturón amarillo en manufactura esbelta (Excelencia Operacional)" }
+  ],
+
+  "sales": [
+    {
+      "address": "304 Spring Street",
+      "locality": "Durham",
+      "region": "NC",
+      "postalCode": "27703",
+      "status": "sold",
+      "with": "Oscar Corrales",
+      "image": "assets/img/sold-304-spring-st-durham.jpg",
+      "imageInterior": "assets/img/sold-304-spring-st-kitchen.jpg",
+      "en": "An updated 2016 home in the heart of Durham: hardwood and LVP floors, a bright open living area and a kitchen with stainless appliances.",
+      "es": "Una casa actualizada en 2016 en el corazón de Durham: pisos de madera y LVP, una sala amplia y luminosa y una cocina con electrodomésticos de acero inoxidable."
+    }
+  ],
+
+  "images": {
+    "portrait": "assets/img/margarita-cuesta-portrait-1200.jpg",
+    "portraitSmall": "assets/img/margarita-cuesta-portrait-640.jpg",
+    "seated": "assets/img/margarita-cuesta-seated-1200.jpg",
+    "seatedSmall": "assets/img/margarita-cuesta-seated-640.jpg",
+    "og": "assets/img/og-margarita-cuesta.jpg"
+  }
+}

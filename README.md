@@ -10,7 +10,9 @@ a Spanish page at `/es/`, one JSON-LD identity graph, and call, text, WhatsApp a
 
 - Node 18 or newer. No packages to install: the build and tests use the standard library only.
 - Python 3 (preinstalled on macOS) only for the local preview server.
-- Google Chrome only to regenerate the share image (`scripts/make-images.sh`).
+- Only to regenerate the share image (`scripts/make-images.sh`): Google Chrome and macOS's
+  built-in `sips`. On Linux, screenshot `scripts/og.html` (1200x630) and `scripts/icon.html`
+  (180x180) by hand instead.
 
 ## Use
 
