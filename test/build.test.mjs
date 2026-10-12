@@ -110,7 +110,6 @@ test('build CLI accepts --base=/x and --base /x, and rejects anything else', () 
 
 test('publish-preview.sh refuses any repo not named *-preview', () => {
   const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritacuesta.com' }, encoding: 'utf8' });
-  if (r.error || /gh: command not found|not logged/i.test(r.stderr)) return; // no gh here: guard untestable
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /Refusing/);
 });

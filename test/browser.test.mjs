@@ -99,7 +99,8 @@ after(async () => {
     await exited; // Chrome keeps writing its profile until it exits
   }
   server?.close();
-  if (profile) rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  // Best effort: on Linux, Chrome's helper processes can outlive the parent for a moment.
+  try { if (profile) rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch {}
 });
 
 const FILL_STEP1 = `(() => { const f=document.querySelector('.intake');

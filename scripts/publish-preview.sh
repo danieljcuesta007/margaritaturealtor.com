@@ -5,11 +5,11 @@
 # Needs: node, git, gh (logged in). Set PREVIEW_REPO=owner/name to use another repo.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-OWNER="$(gh api user -q .login)"
-REPO="${PREVIEW_REPO:-$OWNER/margaritacuesta-preview}"
+# Guard first: this force-pushes, so only ever target a repo named *-preview.
+if [ -n "${PREVIEW_REPO:-}" ]; then REPO="$PREVIEW_REPO"; else REPO="$(gh api user -q .login)/margaritacuesta-preview"; fi
 NAME="${REPO#*/}"
-# Guard: this force-pushes, so only ever target a repo named *-preview.
 case "$NAME" in *-preview) ;; *) echo "Refusing: $REPO is not a *-preview repo" >&2; exit 1;; esac
+OWNER="${REPO%%/*}"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 node src/build.mjs "$TMP/site" --preview --base="/$NAME"
 if ! gh repo view "$REPO" >/dev/null 2>&1; then
