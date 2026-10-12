@@ -230,3 +230,18 @@ test('no hardcoded home directories anywhere, and no emoji in what visitors see'
     if (f.startsWith(out)) assert.doesNotMatch(s.replace(/[©®™]/g, ''), /\p{Extended_Pictographic}/u, `emoji in ${f}`);
   }
 });
+
+test('home shows the Sequoia band with her co-ownership disclosure, and a Calendly discovery button', () => {
+  for (const [path, lang] of [['/', 'en'], ['/es/', 'es']]) {
+    const html = pages[path];
+    assert.ok(visibleText(html).includes(COPY[lang].sequoia.disclosure), `${path}: disclosure`);
+    assert.ok(html.includes(identity.ventures[0].url), `${path}: Sequoia link`);
+    assert.match(html, /data-book-call[^>]*>|href="https:\/\/calendly\.com\/margarita-corralesre\/discovery"/);
+  }
+});
+
+test('booking config notes ($-keys) never reach the page, and a plain string still works', async () => {
+  assert.doesNotMatch(pages['/work-with-me/'], /created 12 Oct/);
+  const { bookingMap } = await import('../src/render.mjs');
+  assert.deepEqual(bookingMap({ links: { booking: 'https://x/y' } }), { discovery: 'https://x/y' });
+});

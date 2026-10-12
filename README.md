@@ -53,7 +53,7 @@ node scripts/make-guide.mjs           # regenerate the free guide PDFs (needs Ch
 ## Common changes
 
 - **New listing or open house:** add it to `data/listings.json` (photos in `assets/img/`). Past open houses hide themselves.
-- **Her booking link:** paste it into `links.booking` in `data/identity.json`.
+- **Booking links:** `links.booking` in `data/identity.json` maps each goal (discovery, buy, sell, lease, invest, showing) to a Calendly event; a single URL string also works and is used as the discovery call.
 - **New profile (Zillow, Google Business Profile...):** add it to `profiles`. It reaches `sameAs` and the footer.
 - **Wording:** edit `src/copy.mjs`, both languages. The parity test fails if one side gains or loses a field.
 
