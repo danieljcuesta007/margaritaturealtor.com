@@ -32,7 +32,7 @@ So she starts from zero, which also means nothing is competing with her name.
 | Email | margarita@corralesre.com |
 | Office | 1715 Pacific Dr., Raleigh, NC 27609 |
 | License | NC #358832 |
-| Website | https://www.margaritacuesta.com |
+| Website | https://www.margaritaturealtor.com |
 | One line | Bilingual (English/Spanish) real estate broker in Raleigh, Durham and the Triangle. |
 
 Handles stay as they are. Changing a handle breaks every link that already exists.
@@ -46,11 +46,11 @@ Change **display names and bios**, which is what search actually reads.
    Verification is hers to do (video or postcard). This is what puts her in the map pack
    for "realtor que habla español Raleigh".
 2. **Team page on corralesre.com.** Ask Oscar to add her photo, the one-line bio and a
-   link to margaritacuesta.com on `/agents/Margarita-Cuesta/8898384` and her IDX subdomain.
+   link to margaritaturealtor.com on `/agents/Margarita-Cuesta/8898384` and her IDX subdomain.
    A link from the team's own site is the strongest corroboration she can get.
 3. **Instagram.** Name field: `Margarita Cuesta | Realtor Raleigh` (the name field is
    searchable on Instagram). Bio: `Bilingual realtor · English & Español · Corrales Real
-   Estate Team with The Insight Group · NC #358832`. Link: margaritacuesta.com (or a single
+   Estate Team with The Insight Group · NC #358832`. Link: margaritaturealtor.com (or a single
    cleaned Linktree with the site first).
 4. **LinkedIn** (kept off the website by Daniel's call, 12 Oct 2026, but the profile itself should still match). Headline: `Real Estate Broker & REALTOR® | Corrales Real Estate Team with
    The Insight Group | Bilingual English/Spanish | Raleigh-Durham`. Add the Corrales team as

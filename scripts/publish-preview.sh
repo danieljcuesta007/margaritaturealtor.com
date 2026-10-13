@@ -13,7 +13,7 @@ OWNER="${REPO%%/*}"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 node src/build.mjs "$TMP/site" --preview --base="/$NAME"
 if ! gh repo view "$REPO" >/dev/null 2>&1; then
-  gh repo create "$REPO" --public --description "Preview of margaritacuesta.com (built pages only, not indexed)" >/dev/null
+  gh repo create "$REPO" --public --description "Preview of margaritaturealtor.com (built pages only, not indexed)" >/dev/null
 fi
 cd "$TMP/site"
 git init -q -b main

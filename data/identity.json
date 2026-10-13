@@ -1,6 +1,6 @@
 {
   "$comment": "The one record of who Margarita is. Every page, the JSON-LD graph, the footer, llms.txt and the tests read from here. Change a fact here and nowhere else. See docs/ENTITY.md for why each field exists.",
-  "site": "https://www.margaritacuesta.com",
+  "site": "https://www.margaritaturealtor.com",
   "name": "Margarita Cuesta",
   "alternateNames": [
     "Margarita C",

@@ -33,7 +33,6 @@ export const COPY = {
       titleC: 'and a home that’s yours.',
       lede: 'I help families buy, sell and rent across the Triangle with a structured plan, honest numbers and every conversation in English or Spanish.',
       ctaWork: 'Work with me',
-      ctaWhatsapp: 'WhatsApp me',
       badge: 'English · Español',
     },
     journeys: {
@@ -246,7 +245,6 @@ export const COPY = {
       titleC: 'y un hogar que es suyo.',
       lede: 'Ayudo a familias a comprar, vender y rentar en el Triángulo con un plan estructurado, números honestos y cada conversación en español o en inglés.',
       ctaWork: 'Trabajar conmigo',
-      ctaWhatsapp: 'Escríbame por WhatsApp',
       badge: 'Español · English',
     },
     journeys: {

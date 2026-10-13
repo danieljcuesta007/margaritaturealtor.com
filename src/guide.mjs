@@ -25,7 +25,7 @@ export const GUIDE = {
     ],
     closeTitle: 'You do not have to figure this out alone.',
     closeBody: 'I walk families through every one of these steps, in English or Spanish. Tell me about your plans and I will prepare options before we even meet.',
-    cta: 'Start at margaritacuesta.com/work-with-me',
+    cta: 'Start at margaritaturealtor.com/work-with-me',
     disclaimer: 'General information only, not legal, tax or financial advice. Program rules and contract terms change; confirm details with your lender and your closing attorney.',
   },
   es: {
@@ -47,7 +47,7 @@ export const GUIDE = {
     ],
     closeTitle: 'No tiene que resolver esto solo.',
     closeBody: 'Acompaño a las familias en cada uno de estos pasos, en español o en inglés. Cuénteme sus planes y le preparo opciones antes de reunirnos.',
-    cta: 'Empiece en margaritacuesta.com/es/trabajar-conmigo',
+    cta: 'Empiece en margaritaturealtor.com/es/trabajar-conmigo',
     disclaimer: 'Información general, no es asesoría legal, fiscal ni financiera. Las reglas de los programas y los términos de los contratos cambian; confirme los detalles con su prestamista y su abogado de cierre.',
   },
 };

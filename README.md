@@ -1,4 +1,6 @@
-# margaritacuesta.com
+# margaritaturealtor.com
+
+(Repo and folder keep the earlier name `margaritacuesta.com`; the site's domain is **margaritaturealtor.com**, matching her @margaritaturealtor handles. Not bought yet.)
 
 The website of **Margarita Cuesta**, bilingual (English/Spanish) real estate broker and
 REALTOR® with the Corrales Real Estate Team with The Insight Group in Raleigh, NC.

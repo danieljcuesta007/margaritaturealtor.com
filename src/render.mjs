@@ -340,7 +340,6 @@ export function bookingMap(identity) {
 function homeBody(ctx) {
   const { identity, c, u, listings } = ctx;
   const tel = `tel:${identity.contact.phoneE164}`;
-  const wa = `${identity.contact.whatsapp}?text=${encodeURIComponent(c.lang === 'es' ? 'Hola Margarita, la encontré por su sitio web.' : 'Hi Margarita, I found you through your website.')}`;
   const h = c.hero;
   const work = u(c.paths.work);
   const cards = [...activeListings(listings), ...listings.filter((l) => l.status === 'sold')];
@@ -353,7 +352,6 @@ function homeBody(ctx) {
       <p class="lede">${esc(h.lede)}</p>
       <div class="cta-row">
         <a class="btn btn-ink" href="${work}">${esc(h.ctaWork)} ${icon('arrow')}</a>
-        <a class="btn btn-tiff" href="${wa}" rel="noopener">${icon('whatsapp')}<span>${esc(h.ctaWhatsapp)}</span></a>
       </div>
       <p class="hero-call"><a href="${tel}">${icon('phone')} ${esc(identity.contact.phoneDisplay)}</a></p>
     </div>
