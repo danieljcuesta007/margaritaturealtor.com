@@ -54,7 +54,7 @@ and listing data has MLS display rules, so a person picks the homes.
 | Worker `api/` | `POST /api/lead`, `POST /api/subscribe`, `GET /prepare/:token` | Validates input, honeypot field + Cloudflare Turnstile against spam |
 | D1 | `leads`, `subscribers`, `touchpoints` | Personal data: no logging of bodies, delete after 24 months unless she is working with them |
 | Notify Margarita | Cloudflare Email Routing `send_email` | Can only send to verified addresses, which is exactly her inbox |
-| Email to clients | Resend (free: 3,000/month) from `margaritacuesta.com` | Needs the domain + SPF/DKIM; Reply-To `margarita@corralesre.com` so replies reach her |
+| Email to clients | Resend (free: 3,000/month) from `margaritaturealtor.com` | Needs the domain + SPF/DKIM; Reply-To `margarita@corralesre.com` so replies reach her |
 | Cron trigger | hourly | Reminders and scheduled touchpoints |
 | Booking | Calendly events per goal in `data/identity.json` → `links.booking` (set 12 Oct 2026) | The intake hands off to the matching event, prefilled |
 | Newsletter | `subscribers` table, sent monthly | Or Kit/Flodesk if she wants a visual editor |
@@ -65,7 +65,7 @@ email/WhatsApp on their own.
 
 ## Decisions needed (Daniel / Margarita)
 
-1. **Buy `margaritacuesta.com`.** Needed to send email as her and for the real site. Unregistered on 12 Oct 2026.
+1. **Buy `margaritaturealtor.com`.** Needed to send email as her and for the real site. Unregistered on 12 Oct 2026 (Daniel will buy it).
 2. **Calendar:** Google Calendar appointment schedule (free with a Google account) or Cal.com. Which calendar does she actually live in?
 3. **Email sender:** Resend on her domain (recommended), or keep everything as notifications to her and let her send the touchpoint from her own inbox.
 4. **Cloudflare account:** Daniel's now, moved to hers later, or hers from the start.
