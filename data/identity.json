@@ -1,0 +1,165 @@
+{
+  "$comment": "The one record of who Margarita is. Every page, the JSON-LD graph, the footer, llms.txt and the tests read from here. Change a fact here and nowhere else. See docs/ENTITY.md for why each field exists.",
+  "site": "https://www.margaritaturealtor.com",
+  "name": "Margarita Cuesta",
+  "alternateNames": [
+    "Margarita C",
+    "Margarita Tu Realtor",
+    "MargaritaTuRealtor"
+  ],
+  "jobTitle": {
+    "en": "Real Estate Broker",
+    "es": "Corredora de bienes raíces"
+  },
+  "description": {
+    "en": "Margarita Cuesta is a bilingual (English and Spanish) real estate broker and REALTOR® serving Raleigh, Durham and the Triangle. She helps buyers, sellers, landlords and investors, with her license held through The Insight Group as a member of the Corrales Real Estate Team.",
+    "es": "Margarita Cuesta es corredora de bienes raíces y REALTOR® bilingüe (español e inglés) en Raleigh, Durham y el Triángulo. Ayuda a compradores, vendedores, propietarios e inversionistas; su licencia está con The Insight Group como miembro del Corrales Real Estate Team."
+  },
+  "contact": {
+    "email": "margarita@corralesre.com",
+    "phoneDisplay": "(919) 432-2204",
+    "phoneE164": "+19194322204",
+    "whatsapp": "https://wa.me/19194322204"
+  },
+  "license": {
+    "number": "358832",
+    "state": "North Carolina",
+    "issuer": "North Carolina Real Estate Commission",
+    "issuerUrl": "https://www.ncrec.gov/"
+  },
+  "languages": [
+    "en",
+    "es"
+  ],
+  "areaServed": [
+    "Raleigh",
+    "Durham",
+    "Cary",
+    "Apex",
+    "Knightdale",
+    "Wake County",
+    "the Research Triangle"
+  ],
+  "firm": {
+    "name": "The Insight Group",
+    "displayWithTeam": "Corrales Real Estate Team with The Insight Group",
+    "brand": "Casa 1-2-3 de Insight Group",
+    "logo": "assets/img/logo-casa123-insight.png"
+  },
+  "links": {
+    "searchHomes": "https://my.flexmls.com/MargaritaCuesta",
+    "booking": {
+      "$comment": "Calendly event per intake goal (created 12 Oct 2026 in her account). The intake opens the one matching the visitor's goal, pre-filled with name and email.",
+      "discovery": "https://calendly.com/margarita-corralesre/discovery",
+      "buy": "https://calendly.com/margarita-corralesre/buyer-consultation",
+      "invest": "https://calendly.com/margarita-corralesre/buyer-consultation",
+      "sell": "https://calendly.com/margarita-corralesre/listing-consultation",
+      "both": "https://calendly.com/margarita-corralesre/listing-consultation",
+      "lease": "https://calendly.com/margarita-corralesre/rental-owners",
+      "showing": "https://calendly.com/margarita-corralesre/showing"
+    }
+  },
+  "profiles": [
+    {
+      "id": "instagram",
+      "label": "Instagram",
+      "handle": "@margaritaturealtor",
+      "url": "https://www.instagram.com/margaritaturealtor/"
+    },
+    {
+      "id": "tiktok",
+      "label": "TikTok",
+      "handle": "@margaritaturealtor",
+      "url": "https://www.tiktok.com/@margaritaturealtor"
+    }
+  ],
+  "education": [
+    {
+      "name": "Fundación Universitaria Los Libertadores",
+      "place": "Bogotá, Colombia",
+      "en": "Master's degree in Communications",
+      "es": "Maestría en Comunicaciones"
+    }
+  ],
+  "credentials": [
+    {
+      "en": "Certified Full-Service Professional (CFSP)",
+      "es": "Profesional Certificada de Servicio Completo (CFSP)"
+    }
+  ],
+  "sales": [
+    {
+      "address": "304 Spring Street",
+      "locality": "Durham",
+      "region": "NC",
+      "postalCode": "27703",
+      "status": "sold",
+      "image": "assets/img/sold-304-spring-st-durham.jpg",
+      "imageInterior": "assets/img/sold-304-spring-st-kitchen.jpg",
+      "en": "An updated 2016 home in the heart of Durham: hardwood and LVP floors, a bright open living area and a kitchen with stainless appliances.",
+      "es": "Una casa actualizada en 2016 en el corazón de Durham: pisos de madera y LVP, una sala amplia y luminosa y una cocina con electrodomésticos de acero inoxidable."
+    }
+  ],
+  "images": {
+    "portrait": "assets/img/margarita-cuesta-portrait-1200.jpg",
+    "portraitSmall": "assets/img/margarita-cuesta-portrait-640.jpg",
+    "seated": "assets/img/margarita-cuesta-seated-1200.jpg",
+    "seatedSmall": "assets/img/margarita-cuesta-seated-640.jpg",
+    "og": "assets/img/og-margarita-cuesta.jpg"
+  },
+  "team": {
+    "name": "Corrales Real Estate Team",
+    "lead": "Oscar Corrales",
+    "phoneDisplay": "(919) 349-7110",
+    "phoneE164": "+19193497110",
+    "address": {
+      "street": "1715 Pacific Dr.",
+      "locality": "Raleigh",
+      "region": "NC",
+      "postalCode": "27609",
+      "country": "US"
+    },
+    "logo": "assets/img/logo-corrales-re.png"
+  },
+  "api": {
+    "$comment": "Lead backend (Cloudflare Worker, see docs/LEAD-SYSTEM.md). Empty = forms fall back to email/WhatsApp and the guide downloads directly.",
+    "leads": "",
+    "subscribe": ""
+  },
+  "testimonials": [
+    {
+      "name": "J. Garcia",
+      "lang": "en",
+      "text": "Working with Margarita and her team was amazing. They took care of me and my family since the beginning. They walked me through the process of getting my first house. They were available all the time for me. We went to see the house different times throughout the process and Margarita always was available for me. After closing all the process and I was officially the owner of the house, they kept in touch with me just to make sure everything was ok with the house. I really recommend them for any first time home buyers."
+    },
+    {
+      "name": "I. Velasquez",
+      "lang": "en",
+      "text": "Responsibility, discipline, patience, perseverance, and genuine human quality, among many other virtues, are what define this investment group. I truly don’t have enough words to thank you for making this process such an excellent experience for me and my family. We are very happy with our new home and filled with deep gratitude. Margarita and her team are the best!"
+    },
+    {
+      "name": "G. Vanegas",
+      "lang": "en",
+      "text": "With Margarita and her team you get the best in North Carolina. I recommend them 100 percent, and I truly recommend them with pleasure."
+    },
+    {
+      "name": "S. G. Rodriguez",
+      "lang": "en",
+      "text": "So many good things to say, everyone there was so helpful throughout my first home buying process. My real estate agent Margarita was great, quick to answer, always communicated with me throughout the whole process! Super thankful to this team!"
+    }
+  ],
+  "testimonialsSource": "Margarita's listing presentation (Canva), past client testimonials. Emoji removed; one doubled word fixed.",
+  "ventures": [
+    {
+      "id": "sequoia",
+      "name": "Sequoia Builders",
+      "legalName": "Sequoia Builders LLC",
+      "role": {
+        "en": "Co-owner",
+        "es": "Copropietaria"
+      },
+      "url": "https://danieljcuesta007.github.io/sequoiabuilders-preview/",
+      "$comment": "Preview URL until Sequoia has its own domain. Repo: ~/sequoiabuilders."
+    }
+  ]
+}

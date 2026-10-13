@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Website of Margarita Cuesta, bilingual real estate broker in Raleigh, NC.",
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=18 (22+ for the browser tests)" },
   "scripts": {
     "build": "node src/build.mjs",
     "test": "node --test",
