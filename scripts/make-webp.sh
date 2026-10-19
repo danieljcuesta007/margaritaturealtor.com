@@ -21,7 +21,7 @@ for src in assets/img/*.jpg; do
   if [[ "$name" =~ -(640)$ ]]; then continue; fi        # the -640 copy is a smaller duplicate of -1200
   name=${name%-1200}
   w=$(dim "$src" pixelWidth); h=$(dim "$src" pixelHeight)
-  if [ "$h" -gt "$w" ]; then widths="480 720 960 1200"; else widths="640 960"; fi
+  if [ "$h" -gt "$w" ]; then widths="480 720 960 1200"; else widths="320 640 960"; fi
   for n in $widths; do
     [ "$n" -gt "$w" ] && n=$w
     [ -f "$OUT/$name-$n.webp" ] && continue

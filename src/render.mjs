@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { buildGraph } from './schema.mjs';
 
 export const esc = (s) =>
@@ -80,6 +81,13 @@ function webpAtMost(ctx, jpg, max) {
 }
 const HERO_SIZES = '(min-width: 900px) 400px, 88vw';
 
+/**
+ * Her mark (assets/mark.svg, also the tab icon): the arch from the hero portrait with
+ * M and C in navy. Read from the file so there is one drawing, inlined with a class.
+ */
+const MARK_SVG = readFileSync(new URL('../assets/mark.svg', import.meta.url), 'utf8').trim();
+const MARK = (cls = 'mark') => MARK_SVG.replace(/<svg [^>]*>/, (t) => t.replace(/ role="img" aria-label="[^"]*"/, '').replace('<svg ', `<svg class="${cls}" aria-hidden="true" focusable="false" `));
+
 const EHO = `<svg class="eho" viewBox="0 0 40 40" role="img" aria-label="Equal Housing Opportunity"><path d="M20 3 2 17h4v20h28V17h4z" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="19" width="16" height="3.5" fill="currentColor"/><rect x="12" y="26" width="16" height="3.5" fill="currentColor"/></svg>`;
 
 /* ---------- shared chrome ---------- */
@@ -142,8 +150,9 @@ ${announce(ctx)}
 <header class="top">
   <div class="wrap top-inner">
     <a class="brand" href="${home}">
-      <span class="brand-name">${esc(identity.name)}</span>
-      <span class="brand-sub">REALTOR® · English &amp; Español</span>
+      ${MARK('brand-mark')}
+      <span class="brand-text"><span class="brand-name">${esc(identity.name)}</span>
+      <span class="brand-sub">REALTOR® · English &amp; Español</span></span>
     </a>
     <nav class="nav" aria-label="Primary">
       <a href="${a('#listings')}">${esc(c.nav.listings)}</a>
@@ -167,7 +176,7 @@ function footer(ctx) {
   return `<footer class="foot">
   <div class="wrap foot-grid">
     <div class="foot-id">
-      <p class="foot-name">${esc(identity.name)}</p>
+      <p class="foot-name">${MARK('foot-mark')}${esc(identity.name)}</p>
       <p>${esc(identity.jobTitle[c.lang])}, REALTOR®<br>${esc(identity.firm.displayWithTeam)}</p>
       <p>${esc(c.footer.licensed)} · ${esc(c.footer.licenseNo)}${esc(identity.license.number)}</p>
       <ul class="social">
@@ -199,7 +208,7 @@ function footer(ctx) {
 
 /** The toolkit cover, drawn in markup: used in the popup and the giveaway band. */
 function toolkitCover(c, cls) {
-  return `<div class="${cls}" aria-hidden="true"><span class="tk-kick">Raleigh · Durham</span><span class="tk-title">${esc(c.popup.cover)}</span><span class="tk-rule"></span><span class="tk-lines"><i></i><i></i><i></i><i></i><i></i></span><span class="tk-by">Margarita Cuesta</span></div>`;
+  return `<div class="${cls}" aria-hidden="true">${MARK('tk-mark')}<span class="tk-kick">Raleigh · Durham</span><span class="tk-title">${esc(c.popup.cover)}</span><span class="tk-rule"></span><span class="tk-lines"><i></i><i></i><i></i><i></i><i></i></span><span class="tk-by">Margarita Cuesta</span></div>`;
 }
 
 /**
@@ -322,46 +331,99 @@ function journeys(ctx) {
 </section>`;
 }
 
-function listingCard(ctx, l) {
+/**
+ * One listing as an editorial feature: a large photo with a thumbnail strip,
+ * and every fact plus the showing button always visible (no flip, nothing
+ * hidden from a keyboard or a screen reader).
+ */
+function listingFeature(ctx, l) {
   const { c, u, now } = ctx;
   const L = c.listings;
   const oh = upcomingOpenHouses(l, now)[0];
   const sold = l.status === 'sold';
   const book = `${u(c.paths.work)}?goal=buy&amp;listing=${encodeURIComponent(l.id)}`;
-  return `<article class="flip${sold ? ' is-sold' : ''}" data-flip>
-  <div class="flip-inner">
-    <div class="face front">
-      <div class="photo">
-        ${picture(ctx, l.photos[0], '(min-width: 420px) 360px, 92vw', `<img src="${u('/' + l.photos[0])}" alt="${esc(l.address)}, ${esc(l.locality)}" width="1280" height="720" loading="lazy" decoding="async">`)}
-        ${oh ? `<span class="chip" data-ends="${oh.end}"><b>${esc(L.openHouse)}</b> ${esc(openHouseLabel(oh, c.htmlLang))}</span>` : ''}
-      </div>
-      <div class="front-body">
-        <p class="kick">${esc(sold ? L.sold : L.active)}${l.mls ? ` · MLS #${esc(l.mls)}` : ''}</p>
-        <h3>${esc(l.address)}</h3>
-        <p class="loc">${esc(l.locality)}, ${esc(l.region)} ${esc(l.postalCode)}</p>
-        <p class="facts">${l.beds} ${esc(L.beds.toLowerCase())} · ${l.baths} ${esc(L.baths.toLowerCase())} · ${Number(l.sqft).toLocaleString('en-US')} ${esc(L.sqft.toLowerCase())}</p>
-        ${sold ? '' : `<a class="link front-book" href="${book}">${esc(L.bookShort)} ${icon('arrow')}</a>`}
-        <div class="front-foot">
-          ${l.price && !sold ? `<p class="price">${money(l.price)}</p>` : ''}
-          <span class="hover-hint">${esc(L.flip)} ${icon('arrow')}</span>
-          <button class="flip-btn" type="button" aria-expanded="false">${esc(L.flip)} ${icon('arrow')}</button>
-        </div>
-      </div>
+  const alt = (i) => `${esc(l.address)}, ${esc(l.locality)}${i ? ` (${i + 1}/${l.photos.length})` : ''}`;
+  const main = l.photos[0];
+  return `<article class="feature${sold ? ' is-sold' : ''}" data-gallery>
+  <div class="feature-media">
+    <div class="feature-main">
+      ${picture(ctx, main, '(min-width: 960px) 720px, 94vw', `<img src="${u('/' + main)}" alt="${alt(0)}" width="1280" height="720" loading="lazy" decoding="async" data-main>`)}
+      ${oh ? `<span class="chip" data-ends="${oh.end}"><b>${esc(L.openHouse)}</b> ${esc(openHouseLabel(oh, c.htmlLang))}</span>` : ''}
     </div>
-    <div class="face back">
-      <div class="specs">
-        <div class="spec">${icon('bed')}<strong>${l.beds}</strong><span>${esc(L.beds)}</span></div>
-        <div class="spec">${icon('bath')}<strong>${l.baths}</strong><span>${esc(L.baths)}</span></div>
-        <div class="spec">${icon('area')}<strong>${Number(l.sqft).toLocaleString('en-US')}</strong><span>${esc(L.sqft)}</span></div>
-      </div>
-      <h3>${esc(l.address)}</h3>
-      <p class="back-text">${esc(l.highlights[c.lang])}</p>
-      ${sold ? '' : `<a class="btn btn-ink btn-block" href="${book}">${esc(L.book)}</a>`}
-      ${l.url ? `<a class="link" href="${l.url}" rel="noopener">${esc(L.photos)} ${icon('arrow')}</a>` : ''}
-      <button class="flip-btn flip-back" type="button">${esc(L.flipBack)}</button>
+    ${l.photos.length > 1 ? `<div class="thumbs">${l.photos.map((ph, i) => `<button type="button" class="thumb${i === 0 ? ' is-on' : ''}" aria-pressed="${i === 0}" aria-label="${esc(L.photoOf)} ${i + 1}" data-src="${u(webpAtMost(ctx, ph, 960))}" data-alt="${alt(i)}"><img src="${u(webpAtMost(ctx, ph, 320))}" alt="" width="160" height="100" loading="lazy" decoding="async"></button>`).join('')}</div>` : ''}
+  </div>
+  <div class="feature-body">
+    <p class="kick">${esc(sold ? L.sold : L.active)}${l.mls ? ` · MLS #${esc(l.mls)}` : ''}</p>
+    <h3>${esc(l.address)}</h3>
+    <p class="loc">${esc(l.locality)}, ${esc(l.region)} ${esc(l.postalCode)}${l.subdivision ? ` · ${esc(l.subdivision)}` : ''}</p>
+    ${l.price && !sold ? `<p class="price">${money(l.price)}</p>` : ''}
+    <ul class="specs">
+      <li>${icon('bed')}<strong>${l.beds}</strong> ${esc(L.beds.toLowerCase())}</li>
+      <li>${icon('bath')}<strong>${l.baths}</strong> ${esc(L.baths.toLowerCase())}</li>
+      <li>${icon('area')}<strong>${Number(l.sqft).toLocaleString('en-US')}</strong> ${esc(L.sqft.toLowerCase())}</li>
+    </ul>
+    <p class="feature-note"><span class="feature-note-h">${esc(L.note)}</span>${esc(l.highlights[c.lang])}</p>
+    <div class="cta-row">
+      ${sold ? '' : `<a class="btn btn-ink" href="${book}">${esc(L.bookShort)} ${icon('arrow')}</a>`}
+      ${l.url ? `<a class="btn btn-ghost" href="${l.url}" rel="noopener">${esc(L.photos)}</a>` : ''}
     </div>
   </div>
 </article>`;
+}
+
+/** Around the Triangle: the places she works most (data/areas.json). */
+function areasSection(ctx) {
+  const { c, u, areas } = ctx;
+  if (!areas?.length) return '';
+  const A = c.areas;
+  return `<section id="areas" class="areas" aria-labelledby="areas-h">
+  <div class="wrap">
+    <div class="areas-head">
+      <div><p class="eyebrow">${esc(A.eyebrow)}</p><h2 id="areas-h">${esc(A.heading)}</h2></div>
+      <p class="lede">${esc(A.intro)}</p>
+    </div>
+    <div class="area-grid">
+      ${areas.map((a) => `<article class="area">
+        ${a.photo ? picture(ctx, a.photo, '(min-width: 1100px) 340px, (min-width: 720px) 45vw, 92vw', `<img class="area-photo" src="${u('/' + a.photo)}" alt="${esc(a.name)}" width="800" height="600" loading="lazy" decoding="async">`) : ''}
+        ${a.county ? `<p class="area-county">${esc(a.county)}</p>` : ''}
+        <h3>${esc(a.name)}</h3>
+        ${a.drive?.[c.lang] ? `<p class="area-drive">${esc(a.drive[c.lang])}</p>` : ''}
+        ${a[c.lang] || a.en ? `<p>${esc(a[c.lang] || a.en)}</p>` : ''}
+        ${a.note?.[c.lang] ? `<p class="area-note"><span>${esc(A.fromMargarita)}</span>${esc(a.note[c.lang])}</p>` : ''}
+        ${(a.landmarks || []).length ? `<ul class="area-tags">${a.landmarks.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+        <a class="link" href="${u(c.paths.work)}?goal=buy&amp;area=${encodeURIComponent(a.name)}">${esc(A.cta)} ${esc(a.name)} ${icon('arrow')}</a>
+      </article>`).join('\n      ')}
+    </div>
+  </div>
+</section>`;
+}
+
+/** How we'll work together: six steps on one drawn line (static, no scroll effects). */
+function processSection(ctx) {
+  const P = ctx.c.process;
+  return `<section id="process" class="process" aria-labelledby="process-h">
+  <div class="wrap">
+    <p class="eyebrow">${esc(P.eyebrow)}</p>
+    <h2 id="process-h">${esc(P.heading)}</h2>
+    <ol class="steps">
+      ${P.items.map(([t, b], i) => `<li><span class="step-n">${String(i + 1).padStart(2, '0')}</span><h3>${esc(t)}</h3><p>${esc(b)}</p></li>`).join('\n      ')}
+    </ol>
+  </div>
+</section>`;
+}
+
+/** The hello video, or a quiet frame saying it is on the way (identity.video). */
+function helloVideo(ctx) {
+  const { identity, c, u } = ctx;
+  const V = c.about.video;
+  // Her own language's video first; otherwise any other, labelled with its language.
+  const other = Object.keys(identity.video || {}).find((k) => !k.startsWith('$') && k !== c.lang && identity.video[k]);
+  const src = identity.video?.[c.lang] || (other ? identity.video[other] : '');
+  const label = identity.video?.[c.lang] || !other ? V.label : `${V.label} (${V.other})`;
+  const url = src && !/^https?:/.test(src) ? u('/' + src.replace(/^\//, '')) : src;
+  const poster = u(webpAtMost(ctx, identity.images.seated, 960));
+  if (url) return `<figure class="hello"><video controls preload="none" playsinline poster="${poster}" src="${esc(url)}" aria-label="${esc(label)}"></video><figcaption>${esc(label)}</figcaption></figure>`;
+  return `<figure class="hello is-soon"><div class="hello-frame"><img src="${poster}" alt="" loading="lazy" decoding="async"><span class="hello-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span></div><figcaption><strong>${esc(V.label)}</strong> · ${esc(V.soon)}</figcaption></figure>`;
 }
 
 function sequoiaBand(ctx) {
@@ -392,6 +454,18 @@ export function bookingMap(identity) {
   return Object.fromEntries(Object.entries(b).filter(([k, v]) => !k.startsWith('$') && typeof v === 'string' && v));
 }
 
+/**
+ * A client's words. On a Spanish page a quote written in English is shown in its
+ * Spanish translation, marked as one, with the original a tap away.
+ */
+function quote(c, t) {
+  const tr = t.lang !== c.lang && t[c.lang];
+  const body = tr
+    ? `<blockquote lang="${c.lang}"><p>${esc(t[c.lang])}</p></blockquote><details class="quote-orig"><summary>${esc(c.reviews.original)}</summary><p lang="${t.lang}">${esc(t.text)}</p></details>`
+    : `<blockquote lang="${t.lang}"><p>${esc(t.text)}</p></blockquote>`;
+  return `<figure class="quote">${body}<figcaption>${esc(t.name)}${tr ? ` <span class="quote-tr">· ${esc(c.reviews.translated)}</span>` : ''}</figcaption></figure>`;
+}
+
 function homeBody(ctx) {
   const { identity, c, u, listings } = ctx;
   const tel = `tel:${identity.contact.phoneE164}`;
@@ -409,6 +483,7 @@ function homeBody(ctx) {
         <a class="btn btn-ink" href="${work}">${esc(h.ctaWork)} ${icon('arrow')}</a>
       </div>
       <p class="hero-call"><a href="${tel}">${icon('phone')} ${esc(identity.contact.phoneDisplay)}</a></p>
+      <ul class="hero-proof">${h.proof.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     </div>
     <figure class="hero-photo">
       <div class="hero-arch" aria-hidden="true"></div>
@@ -431,9 +506,11 @@ ${journeys(ctx)}
         <a class="btn btn-ghost" href="${identity.links.searchHomes}" rel="noopener">${esc(c.listings.search)}</a>
       </div>
     </div>
-    ${cards.length ? `<div class="cards-row">\n      ${cards.map((l) => listingCard(ctx, l)).join('\n      ')}\n    </div>` : `<p class="lede">${esc(c.listings.empty)}</p>`}
+    ${cards.length ? `<div class="features">\n      ${cards.map((l) => listingFeature(ctx, l)).join('\n      ')}\n    </div>` : `<p class="lede">${esc(c.listings.empty)}</p>`}
   </div>
 </section>
+
+${areasSection(ctx)}
 
 ${sequoiaBand(ctx)}
 <section id="services" class="services" aria-labelledby="services-h">
@@ -455,6 +532,8 @@ ${sequoiaBand(ctx)}
   </div>
 </section>
 
+${processSection(ctx)}
+
 <section id="about" class="about" aria-labelledby="about-h">
   <div class="wrap about-grid">
     <figure class="about-photo">
@@ -465,6 +544,7 @@ ${sequoiaBand(ctx)}
       <h2 id="about-h">${esc(c.about.heading)}</h2>
       ${c.about.paras.map((p) => `<p>${esc(p)}</p>`).join('\n      ')}
       <p class="signature">${esc(c.about.signature)}</p>
+      ${helloVideo(ctx)}
       <ul class="creds">
         <li>${esc(c.about.licenseLabel)} #${esc(identity.license.number)}</li>
         ${identity.credentials.map((x) => `<li>${esc(x[c.lang])}</li>`).join('\n        ')}
@@ -488,7 +568,7 @@ ${sequoiaBand(ctx)}
     <p class="eyebrow">${esc(c.reviews.eyebrow)}</p>
     <h2 id="reviews-h">${esc(c.reviews.heading)}</h2>
     <div class="quote-grid">
-      ${identity.testimonials.map((t) => `<figure class="quote"><blockquote lang="${t.lang}"><p>${esc(t.text)}</p></blockquote><figcaption>${esc(t.name)}</figcaption></figure>`).join('\n      ')}
+      ${identity.testimonials.map((t) => quote(c, t)).join('\n      ')}
     </div>
   </div>
 </section>
@@ -670,9 +750,9 @@ function privacyBody(ctx) {
  * Renders every page for one language and returns { [path]: html }.
  * base: prefix for internal links ('' on the real domain, '/repo-name' on GitHub Pages).
  */
-export function renderLanguage({ identity, listings, copy, all, css, script, base = '', preview = false, now = new Date(), guidePdf, journeyImages, webp = {} }) {
+export function renderLanguage({ identity, listings, copy, all, css, script, base = '', preview = false, now = new Date(), guidePdf, journeyImages, webp = {}, areas = [] }) {
   const other = all.find((x) => x !== copy);
-  const ctx = { identity, listings, c: copy, all, other, css, script, preview, now, guidePdf, journeyImages, webp, site: identity.site, u: (p) => `${base}${p}` };
+  const ctx = { identity, listings, c: copy, all, other, css, script, preview, now, guidePdf, journeyImages, webp, areas, site: identity.site, u: (p) => `${base}${p}` };
   const home = page(ctx, 'home', homeBody(ctx), {
     title: copy.title,
     description: copy.metaDescription,

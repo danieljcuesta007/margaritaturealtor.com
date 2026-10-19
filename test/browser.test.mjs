@@ -263,3 +263,15 @@ test('an unsent intake never launches the mail app by itself; the visitor taps t
   assert.equal(await evaluate('location.href'), before);
   assert.match(await evaluate(`document.querySelector('[data-send-email]').href`), /^mailto:/);
 });
+
+test('a listing thumbnail swaps the large photo and says which one is showing', { skip }, async () => {
+  await open('/');
+  await evaluate(`document.querySelectorAll('.feature .thumb')[1].click()`);
+  assert.match(await evaluate(`document.querySelector('[data-main]').src`), /mailwood-2-\d+\.webp$/);
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('.feature .thumb')].map(t=>t.getAttribute('aria-pressed'))`), ['false', 'true', 'false']);
+});
+
+test('an Around the Triangle link starts the intake with that area filled in', { skip }, async () => {
+  await open('/work-with-me/?goal=buy&area=Cary');
+  assert.equal(await evaluate(`document.querySelector('.intake').areas.value`), 'Cary');
+});
