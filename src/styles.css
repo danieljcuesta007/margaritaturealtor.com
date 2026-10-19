@@ -112,7 +112,7 @@ section { padding: var(--section) 0; }
 /* Hero */
 .hero { padding-top: clamp(32px, 5vw, 64px); padding-bottom: clamp(48px, 6vw, 80px); overflow: hidden; }
 .hero-grid { display: grid; gap: 40px; align-items: center; }
-.hero h1 { font-size: clamp(2.6rem, 5.2vw, 4.4rem); line-height: 1.02; margin-bottom: .3em; }
+.hero h1 { font-size: clamp(2.6rem, 4.9vw, 5.4rem); line-height: 1.02; margin-bottom: .3em; }
 .hero h1 span, .hero h1 em { display: block; }
 @media (min-width: 1200px) { .hero h1 em { white-space: nowrap; } }
 .hero .lede { margin: 1em 0 1.6em; max-width: 30em; }
@@ -132,7 +132,12 @@ section { padding: var(--section) 0; }
 .hero-arch { position: absolute; inset: 6% -7% -4% 7%; background: var(--tiff); border-radius: 240px 240px var(--r) var(--r); z-index: 0; }
 .hero-photo img { position: relative; z-index: 1; border-radius: 220px 220px var(--r) var(--r); aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 16%; box-shadow: var(--shadow); }
 .badge { position: absolute; z-index: 2; left: 50%; bottom: -16px; transform: translateX(-50%); background: #fff; color: var(--ink); padding: 11px 18px; border-radius: 999px; font: 600 .86rem/1 var(--sans); box-shadow: var(--shadow); white-space: nowrap; }
-@media (min-width: 900px) { .hero-grid { grid-template-columns: 1.25fr .75fr; gap: 64px; } }
+/* Desktop: a bigger headline and the portrait centred in its half, so copy and photo read as
+   one composition instead of two islands at opposite edges (measured: 120-240px between them). */
+@media (min-width: 900px) {
+  .hero-grid { grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr); gap: clamp(40px, 5vw, 96px); }
+  .hero .hero-photo { width: min(480px, 88%); justify-self: center; }
+}
 
 /* Journeys (where are you headed) */
 .journeys { background: var(--tiff-wash); border-block: 1px solid var(--line); overflow: hidden; }
