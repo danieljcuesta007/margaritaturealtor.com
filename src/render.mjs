@@ -199,7 +199,7 @@ function popup(ctx) {
     <form class="pop-form">
       <label class="sr" for="g-name">${esc(p.name)}</label><input id="g-name" name="name" placeholder="${esc(p.name)}" autocomplete="given-name" required>
       <label class="sr" for="g-email">${esc(p.email)}</label><input id="g-email" name="email" type="email" placeholder="${esc(p.email)}" autocomplete="email" required>
-      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <input class="hp" name="mc_trap" tabindex="-1" autocomplete="off" aria-hidden="true">
       <button class="btn btn-ink" type="submit" data-label="${esc(p.submit)}" data-sending="${esc(p.sending)}">${esc(p.submit)}</button>
     </form>
     <div class="pop-done" hidden>
@@ -586,7 +586,7 @@ function workBody(ctx) {
         <label class="consent"><input type="checkbox" name="consent" required> <span>${esc(F.consent)}</span></label>
       </fieldset>
 
-      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <input class="hp" name="mc_trap" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="form-nav">
         <button class="btn btn-ghost" type="button" data-back hidden>${esc(W.back)}</button>
         <button class="btn btn-ink" type="button" data-next>${esc(W.next)} ${icon('arrow')}</button>

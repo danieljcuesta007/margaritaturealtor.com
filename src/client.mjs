@@ -52,12 +52,12 @@ if(stage){
     var sel='#j-clip-'+i+' .path';
     gsap.set(sel,{scale:0,transformOrigin:'50% 50%'});
     if(last||touched){ tl=gsap.timeline(); tl.to(sel,{scale:1,duration:.8,stagger:{amount:.4,from:'random'},ease:'expo.out'}); return; }
-    tl=gsap.timeline({repeat:-1,repeatDelay:.6,onRepeat:function(){ if(touched) return; laps++; show((active+1)%items.length, laps>=items.length*2-1); }});
+    tl=gsap.timeline({repeat:-1,repeatDelay:.6,onRepeat:function(){ if(touched) return; laps++; show((active+1)%items.length, laps>=items.length*2); }});
     tl.to(sel,{scale:1,duration:.8,stagger:{amount:.4,from:'random'},ease:'expo.out'})
       .to(sel,{scale:1.04,duration:1.4,yoyo:true,repeat:1,ease:'sine.inOut',stagger:{amount:.2,from:'center'}})
       .to(sel,{scale:0,duration:.6,stagger:{amount:.3,from:'edges'},ease:'expo.in'});
   }
-  if(rm.addEventListener) rm.addEventListener('change',function(e){ reduce=e.matches; if(reduce&&window.gsap){ if(tl) tl.kill(); gsap.set('.j-stage .path',{scale:1}); } });
+  if(rm.addEventListener) rm.addEventListener('change',function(e){ reduce=e.matches; if(!window.gsap) return; if(reduce){ if(tl) tl.kill(); gsap.set('.j-stage .path',{scale:1}); } else show(active,true); });
   items.forEach(function(b,i){
     b.addEventListener('mouseenter',function(){touched=true; if(i!==active) show(i)});
     b.addEventListener('focus',function(){touched=true; if(i!==active) show(i)});
@@ -79,7 +79,7 @@ var pop=d.getElementById('guide');
 if(pop && typeof pop.showModal==='function'){
   var K={done:'mc-guide-done',quiet:'mc-guide-quiet',n:'mc-guide-no',shown:'mc-guide-shown',seen:'mc-attention'};
   var title=pop.querySelector('#guide-title'), pform=pop.querySelector('form'), fine=matchMedia('(hover: hover) and (pointer: fine)').matches;
-  var rect=null, queued=false, at={x:0,y:0};
+  var rect=null, queued=false, at={x:0,y:0}, how='welcome';
   function measure(){ rect=pop.open?pop.querySelector('.pop-card').getBoundingClientRect():null; }
   function open(){
     if(pop.open) return;
@@ -111,8 +111,9 @@ if(pop && typeof pop.showModal==='function'){
     addEventListener('resize',measure,{passive:true});
   }
 
-  d.querySelectorAll('[data-open-guide]').forEach(function(b){b.addEventListener('click',open)});
-  if(/[?&]guide=1/.test(location.search)) open();
+  // 'how' records what opened it (the automatic ask, the toolkit band, or a ?guide=1 link) with the sign-up.
+  d.querySelectorAll('[data-open-guide]').forEach(function(b){b.addEventListener('click',function(){ how='band'; open(); })});
+  if(/[?&]guide=1/.test(location.search)){ how='link'; open(); }
   else if(!lget(K.done) && Date.now()>(+lget(K.quiet)||0) && !sget(K.shown) && d.body.classList.contains('page-home')){
     var fired=false, seen=+sget(K.seen)||0, band=d.querySelector('.giveaway');
     function busy(){
@@ -137,10 +138,9 @@ if(pop && typeof pop.showModal==='function'){
     mail.href=mail.href.replace(/(body=[^&]*)/,function(m){ return m+encodeURIComponent('\\n\\n'+name+' <'+email+'>'); });
     function showNote(failed){ note.hidden=false; if(failed) note.querySelector('[data-failed]').hidden=false; }
     pform.hidden=true; done.hidden=false;
-    if(f.get('website')) return; // the honeypot: a person never fills it
     if(!api){ showNote(false); return; }
     btn.disabled=true;
-    post(api,{name:name,email:email,lang:pop.dataset.lang,source:'welcome',page:location.pathname},8000).then(function(ok){
+    post(api,{name:name,email:email,lang:pop.dataset.lang,source:how,page:location.pathname,mc_trap:String(f.get('mc_trap')||'')},8000).then(function(ok){
       if(ok) pop.querySelector('[data-saved]').hidden=false; else showNote(true);
     });
   });
@@ -209,7 +209,7 @@ if(form){
     return lines.join('\\n');
   }
   function data(){
-    var o={}; new FormData(form).forEach(function(v,k){ if(k!=='website') o[k]=v; });
+    var o={}; new FormData(form).forEach(function(v,k){ o[k]=v; });
     o.lang=form.dataset.lang; o.submittedAt=new Date().toISOString(); o.page=location.pathname; return o;
   }
   form.addEventListener('submit',function(e){
@@ -240,10 +240,9 @@ if(form){
       }
     }
     var api=form.dataset.api;
-    if(form.website.value) return finish(true); // honeypot
     if(api){
       form.dataset.busy='1'; submit.disabled=true; submit.firstChild.textContent=submit.dataset.sending+' ';
-      post(api,{brief:text,fields:data()},10000).then(finish);
+      post(api,{brief:text,fields:data(),mc_trap:form.mc_trap.value},10000).then(finish);
     } else finish(false);
   });
   go(0);

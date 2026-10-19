@@ -132,6 +132,7 @@ try {
   for (const lang of Object.keys(GUIDE)) {
     const src = join(tmp, `${lang}.html`);
     writeFileSync(src, html(GUIDE[lang], lang));
+    if (process.env.GUIDE_HTML_DIR) mkdirSync(process.env.GUIDE_HTML_DIR, { recursive: true });
     if (process.env.GUIDE_HTML_DIR) writeFileSync(join(process.env.GUIDE_HTML_DIR, `toolkit-${lang}.html`), html(GUIDE[lang], lang));
     const out = join(ROOT, GUIDE_PDF[lang]);
     mkdirSync(dirname(out), { recursive: true });

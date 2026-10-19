@@ -194,7 +194,7 @@ test('with a backend, the toolkit signup is posted and confirmed; without one, t
   await new Promise((r) => setTimeout(r, 200));
   const posts = await evaluate('window.__posts');
   assert.equal(posts.length, 1);
-  assert.deepEqual([posts[0].body.email, posts[0].body.source], ['ana@example.com', 'welcome']);
+  assert.deepEqual([posts[0].body.email, posts[0].body.source], ['ana@example.com', 'link']);
   assert.equal(await evaluate(`document.querySelector('[data-saved]').hidden`), false);
   assert.equal(await evaluate(`document.querySelector('[data-note]').hidden`), true);
 

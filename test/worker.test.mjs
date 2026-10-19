@@ -28,7 +28,7 @@ function fakeD1() {
 }
 
 const SITE = 'https://www.margaritaturealtor.com';
-function setup({ notify } = {}) {
+function setup({ notify, limiter } = {}) {
   const db = fakeD1();
   const sent = [];
   let n = 0;
@@ -36,6 +36,7 @@ function setup({ notify } = {}) {
     store: d1Store(db),
     notify: notify ?? (async (m) => sent.push(m)),
     origins: [SITE],
+    limiter,
     now: () => new Date('2026-10-19T12:00:00Z'),
     id: () => `id-${++n}`,
   });
@@ -61,9 +62,14 @@ test('signing up twice keeps one row, and re-subscribing undoes an unsubscribe',
   const { db, post, handle } = setup();
   await post('/api/subscribe', { email: 'a@b.co' });
   const { token } = db.prepare('SELECT token FROM subscribers').get();
-  const u = await handle(new Request(`https://api.example/api/unsubscribe?t=${token}`));
+  const look = await handle(new Request(`https://api.example/api/unsubscribe?t=${token}`));
+  assert.equal(look.status, 200);
+  assert.equal(db.prepare('SELECT unsubscribed_at FROM subscribers').get().unsubscribed_at, null, 'a GET (mail scanner) changes nothing');
+  const u = await handle(new Request(`https://api.example/api/unsubscribe?t=${token}`, { method: 'POST' }));
   assert.equal(u.status, 200);
   assert.ok(db.prepare('SELECT unsubscribed_at FROM subscribers').get().unsubscribed_at);
+  const bogus = await handle(new Request('https://api.example/api/unsubscribe?t=not-a-token', { method: 'POST' }));
+  assert.equal(bogus.status, 404, 'a made-up token is not reported as success');
   await post('/api/subscribe', { email: 'A@b.co' });
   const rows = db.prepare('SELECT * FROM subscribers').all();
   assert.equal(rows.length, 1);
@@ -84,7 +90,7 @@ test('bad input is refused and nothing is stored', { skip }, async () => {
 
 test('the honeypot answers 200 and stores nothing', { skip }, async () => {
   const { db, sent, post } = setup();
-  const r = await post('/api/subscribe', { email: 'bot@spam.co', website: 'http://spam' });
+  const r = await post('/api/subscribe', { email: 'bot@spam.co', mc_trap: 'http://spam' });
   assert.equal(r.status, 200);
   assert.equal(db.prepare('SELECT count(*) n FROM subscribers').get().n, 0);
   assert.equal(sent.length, 0);
@@ -118,4 +124,26 @@ test('no Resend key means no notifier; with one, it posts to Resend', async () =
   assert.equal(calls[0][0], 'https://api.resend.com/emails');
   assert.deepEqual(calls[0][1].to, ['m@x.co']);
   assert.equal(calls[0][1].reply_to, 'v@x.co');
+});
+
+test('Margarita is emailed once per new address, not on every repeat sign-up', { skip }, async () => {
+  const { sent, post } = setup();
+  for (let i = 0; i < 3; i++) await post('/api/subscribe', { email: 'same@x.co' });
+  await new Promise((r) => setTimeout(r));
+  assert.equal(sent.length, 1);
+});
+
+test('the rate limiter turns a flood away before anything is stored', { skip }, async () => {
+  let n = 0;
+  const { db, post } = setup({ limiter: { limit: async () => ({ success: ++n <= 2 }) } });
+  const codes = [];
+  for (let i = 0; i < 4; i++) codes.push((await post('/api/lead', { brief: 'x', fields: { email: `a${i}@b.co` } })).status);
+  assert.deepEqual(codes, [200, 200, 429, 429]);
+  assert.equal(db.prepare('SELECT count(*) n FROM leads').get().n, 2);
+});
+
+test('a body declared larger than the limit is refused unread', { skip }, async () => {
+  const { handle } = setup();
+  const r = await handle(new Request('https://api.example/api/subscribe', { method: 'POST', headers: { origin: SITE, 'content-length': '999999' }, body: '{}' }));
+  assert.equal(r.status, 400);
 });

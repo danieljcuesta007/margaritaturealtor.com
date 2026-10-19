@@ -4,11 +4,16 @@
  *
  *   POST /api/subscribe    guide / welcome popup: {name, email, lang, source, page}
  *   POST /api/lead         "Work with me" intake: {brief, fields}
- *   GET  /api/unsubscribe  ?t=<token> from the link in any email
+ *   GET  /api/unsubscribe  ?t=<token>: a page with a confirm button (link scanners only GET)
+ *   POST /api/unsubscribe  ?t=<token>: does it (also RFC 8058 one-click)
+ *
+ * Abuse: Origin stops other websites, not scripts, so each IP is rate limited
+ * when the LIMITER binding exists, Margarita is emailed only for NEW sign-ups,
+ * and bodies over MAX_BODY bytes are refused before they are read.
  *
  * Every lead is saved first; telling Margarita is best effort after the save,
- * so a mail outage never loses a lead. A filled-in `website` field is the
- * honeypot: bots get a 200 and nothing is stored.
+ * so a mail outage never loses a lead. A filled-in `mc_trap` field is the
+ * honeypot (a name no autofill recognises): bots get a 200 and nothing is stored.
  *
  * The site switches to this API by setting api.leads / api.subscribe in
  * data/identity.json. Until then the forms fall back to email/WhatsApp.
@@ -20,7 +25,9 @@ const clip = (v, n = 200) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 
 export function d1Store(db) {
   return {
+    /** Returns true when the address is new, or was unsubscribed and is back. */
     async saveSubscriber(s) {
+      const prev = await db.prepare('SELECT unsubscribed_at FROM subscribers WHERE email = ?1').bind(s.email).first();
       // Re-subscribing an address that unsubscribed turns it back on.
       await db
         .prepare(
@@ -30,7 +37,7 @@ export function d1Store(db) {
         )
         .bind(s.id, s.email, s.name, s.lang, s.source, s.page, s.token, s.createdAt)
         .run();
-      return db.prepare('SELECT token FROM subscribers WHERE email = ?1').bind(s.email).first();
+      return !prev || prev.unsubscribed_at !== null;
     },
     async saveLead(l) {
       await db
@@ -58,7 +65,7 @@ export function resendNotifier(env, fetchImpl = fetch) {
   };
 }
 
-export function createHandler({ store, notify = null, origins = [], now = () => new Date(), id = () => crypto.randomUUID(), waitUntil = (p) => p }) {
+export function createHandler({ store, notify = null, origins = [], limiter = null, now = () => new Date(), id = () => crypto.randomUUID(), waitUntil = (p) => p }) {
   const cors = (origin) =>
     origin && origins.includes(origin)
       ? { 'access-control-allow-origin': origin, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type', vary: 'origin' }
@@ -70,8 +77,9 @@ export function createHandler({ store, notify = null, origins = [], now = () => 
   };
 
   async function readBody(req) {
+    if (Number(req.headers.get('content-length')) > MAX_BODY) return null;
     const text = await req.text();
-    if (text.length > MAX_BODY) return null;
+    if (new TextEncoder().encode(text).length > MAX_BODY) return null;
     try {
       const v = JSON.parse(text);
       return v && typeof v === 'object' ? v : null;
@@ -86,31 +94,35 @@ export function createHandler({ store, notify = null, origins = [], now = () => 
 
     if (req.method === 'OPTIONS') return new Response(null, { status: origins.includes(origin) ? 204 : 403, headers: cors(origin) });
 
-    if (req.method === 'GET' && url.pathname === '/api/unsubscribe') {
-      const t = clip(url.searchParams.get('t'), 80);
-      const done = t ? await store.unsubscribe(t, now().toISOString()) : false;
-      const msg = done || t ? 'You are unsubscribed. / Se ha dado de baja.' : 'This link is not valid. / Este enlace no es válido.';
-      return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Margarita Cuesta</title><p style="font:18px/1.5 system-ui;max-width:32em;margin:15vh auto;padding:0 16px">${msg}</p>`, {
-        status: t ? 200 : 400,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
-      });
+    if (url.pathname === '/api/unsubscribe' && (req.method === 'GET' || req.method === 'POST')) {
+      const t = clip(url.searchParams.get('t'), 80).replace(/[^\w-]/g, '');
+      const page = (body, status = 200) =>
+        new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Margarita Cuesta</title><div style="font:18px/1.5 system-ui;max-width:32em;margin:15vh auto;padding:0 16px">${body}</div>`, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
+      if (!t) return page('<p>This link is not valid. / Este enlace no es válido.</p>', 400);
+      // A GET only shows the button: mail scanners open every link and must not unsubscribe anyone.
+      if (req.method === 'GET') return page(`<p>Stop emails from Margarita Cuesta? / ¿Dejar de recibir correos de Margarita Cuesta?</p><form method="post" action="?t=${t}"><button style="font:inherit;padding:10px 18px">Unsubscribe / Darme de baja</button></form>`);
+      const done = await store.unsubscribe(t, now().toISOString());
+      return done ? page('<p>You are unsubscribed. / Se ha dado de baja.</p>') : page('<p>This link is not valid or was already used. / Este enlace no es válido o ya se usó.</p>', 404);
     }
 
     if (req.method !== 'POST') return json(405, { ok: false, error: 'method' }, origin);
     // Browsers always send Origin on a cross-site POST; anything else is not our form.
     if (!origins.includes(origin)) return json(403, { ok: false, error: 'origin' }, origin);
+    if (limiter) {
+      const { success } = await limiter.limit({ key: req.headers.get('cf-connecting-ip') || 'unknown' });
+      if (!success) return json(429, { ok: false, error: 'rate' }, origin);
+    }
     const body = await readBody(req);
     if (!body) return json(400, { ok: false, error: 'body' }, origin);
-    if (clip(body.website)) return json(200, { ok: true }, origin);
+    if (clip(body.mc_trap)) return json(200, { ok: true }, origin);
 
     const createdAt = now().toISOString();
 
     if (url.pathname === '/api/subscribe') {
       const email = clip(body.email, 254).toLowerCase();
       if (!EMAIL.test(email)) return json(422, { ok: false, error: 'email' }, origin);
-      const s = { id: id(), email, name: clip(body.name, 80), lang: body.lang === 'es' ? 'es' : 'en', source: clip(body.source, 40) || 'guide', page: clip(body.page, 200), token: id(), createdAt };
-      await store.saveSubscriber(s);
-      tell({ subject: `New guide download: ${s.name || s.email}`, text: `${s.name || '(no name)'} <${s.email}>\nLanguage: ${s.lang}\nFrom: ${s.source} on ${s.page || '/'}\n\nThey downloaded the buyer toolkit. Reply to this email to reach them.`, replyTo: s.email });
+      const s = { id: id(), email, name: clip(body.name, 80), lang: body.lang === 'es' ? 'es' : 'en', source: clip(body.source, 40) || 'toolkit', page: clip(body.page, 200), token: id(), createdAt };
+      if (await store.saveSubscriber(s)) tell({ subject: `New guide download: ${s.name || s.email}`, text: `${s.name || '(no name)'} <${s.email}>\nLanguage: ${s.lang}\nFrom: ${s.source} on ${s.page || '/'}\n\nThey downloaded the buyer toolkit. Reply to this email to reach them.`, replyTo: s.email });
       return json(200, { ok: true }, origin);
     }
 
@@ -134,6 +146,6 @@ export function createHandler({ store, notify = null, origins = [], now = () => 
 export default {
   fetch(req, env, ctx) {
     const origins = String(env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-    return createHandler({ store: d1Store(env.DB), notify: resendNotifier(env), origins, waitUntil: (p) => ctx.waitUntil(p) })(req);
+    return createHandler({ store: d1Store(env.DB), notify: resendNotifier(env), origins, limiter: env.LIMITER || null, waitUntil: (p) => ctx.waitUntil(p) })(req);
   },
 };
