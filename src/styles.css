@@ -21,7 +21,14 @@
   color-scheme: light;
 }
 
+/* Self-hosted fonts (assets/fonts/LICENSE.md): no third-party request blocks the first paint.
+   url(/...) paths get the preview base prefix at build time. */
+@font-face { font-family: 'Instrument Serif'; font-style: normal; font-weight: 400; font-display: swap; src: url(/assets/fonts/instrument-serif.woff2) format('woff2'); }
+@font-face { font-family: 'Instrument Serif'; font-style: italic; font-weight: 400; font-display: swap; src: url(/assets/fonts/instrument-serif-italic.woff2) format('woff2'); }
+@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(/assets/fonts/manrope-variable.woff2) format('woff2'); }
+
 *, *::before, *::after { box-sizing: border-box; }
+picture { display: contents; }
 [hidden] { display: none !important; }
 html { scroll-behavior: smooth; scroll-padding-top: 96px; -webkit-text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition: none !important; animation: none !important; } }
@@ -115,10 +122,11 @@ section { padding: clamp(72px, 10vw, 136px) 0; }
 .j-item { all: unset; cursor: pointer; display: flex; align-items: flex-start; gap: 22px; width: 100%; }
 .j-item:focus-visible { outline: 3px solid var(--tiff-ink); outline-offset: 6px; border-radius: 10px; }
 .j-num { font: 700 1.1rem/1 var(--sans); color: var(--ink-3); margin-top: .55em; transition: color .4s ease, transform .4s ease; }
-.j-name { font: 400 clamp(2.6rem, 6vw, 4.6rem)/.92 var(--serif); letter-spacing: -.02em; color: var(--ink-3); opacity: .45; transition: color .5s ease, opacity .5s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
+/* Resting paths are faded with a solid colour, not opacity, so they still pass 3:1 for large text. */
+.j-name { font: 400 clamp(2.6rem, 6vw, 4.6rem)/.92 var(--serif); letter-spacing: -.02em; color: #7A8B97; transition: color .5s ease, opacity .5s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
 .j-item.is-on .j-num { color: var(--tiff-ink); transform: scale(1.1); }
 .j-item.is-on .j-name { color: var(--ink); opacity: 1; transform: translateX(14px); font-style: italic; }
-.j-item:hover .j-name { opacity: .8; }
+.j-item:hover .j-name { color: var(--ink-2); }
 .j-hint { margin-top: 28px; font-size: .84rem; color: var(--ink-3); }
 .j-stage { position: relative; display: grid; place-items: center; }
 .j-glow { position: absolute; width: 110%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(closest-side, rgba(129, 216, 208, .55), rgba(129, 216, 208, 0)); }
@@ -219,6 +227,17 @@ section { padding: clamp(72px, 10vw, 136px) 0; }
 .quote blockquote p::before { content: '“'; display: block; font: 400 4rem/.6 var(--serif); color: var(--tiff); margin-bottom: 8px; }
 .quote figcaption { margin-top: 18px; font-weight: 700; font-size: .86rem; letter-spacing: .06em; color: var(--tiff-ink); }
 @media (min-width: 760px) { .quote-grid { columns: 2; } }
+
+/* FAQ */
+.faq-inner { display: grid; gap: 32px; }
+.faq-list { border-top: 1px solid var(--line); }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 0; min-height: 48px; font: 400 clamp(1.25rem, 2.2vw, 1.5rem)/1.25 var(--serif); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: '+'; flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--tiff-wash); color: var(--tiff-ink); font: 600 1.2rem/1 var(--sans); transition: transform .25s ease; }
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq details p { color: var(--ink-2); margin: -6px 0 22px; max-width: 46em; }
+@media (min-width: 960px) { .faq-inner { grid-template-columns: .7fr 1.3fr; gap: 72px; align-items: start; } }
 
 /* Giveaway */
 .giveaway { padding-block: clamp(56px, 8vw, 96px); }
@@ -368,5 +387,5 @@ section { padding: clamp(72px, 10vw, 136px) 0; }
 @media (min-width: 860px) { .foot-grid { grid-template-columns: 1.1fr .9fr 1.2fr; } .foot { padding-bottom: 72px; } }
 
 /* Phone-only call button */
-.float-call { position: fixed; right: 16px; bottom: 16px; z-index: 25; display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: #fff; padding: 14px 20px; border-radius: 999px; font-weight: 700; text-decoration: none; box-shadow: 0 10px 30px rgba(15, 34, 54, .35); }
+.float-call { position: fixed; right: 16px; bottom: 16px; z-index: 25; display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: #fff; padding: 14px 20px; border-radius: 999px; font-weight: 700; text-decoration: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, .9), 0 10px 30px rgba(15, 34, 54, .35); } /* the white ring keeps it visible over the navy closer */
 @media (min-width: 860px) { .float-call { display: none; } }

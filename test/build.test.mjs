@@ -4,11 +4,11 @@ import { mkdtempSync, readFileSync, existsSync, readdirSync, statSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, loadIdentity, loadListings, llmsTxt, assertSafeOutDir, parseArgs, GUIDE_PDF } from '../src/build.mjs';
+import { build, loadIdentity, loadListings, llmsTxt, assertSafeOutDir, parseArgs, GUIDE_PDF, webpIndex } from '../src/build.mjs';
 import { spawnSync } from 'node:child_process';
 import { COPY } from '../src/copy.mjs';
 import { GUIDE } from '../src/guide.mjs';
-import { nextOpenHouse } from '../src/render.mjs';
+import { nextOpenHouse, esc, renderLanguage } from '../src/render.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = loadIdentity(ROOT);
@@ -101,7 +101,7 @@ test('the next open house is announced, and disappears once it is over', () => {
 });
 
 test('build CLI accepts --base=/x and --base /x, and rejects anything else', () => {
-  assert.deepEqual(parseArgs(['out', '--preview', '--base', '/margaritacuesta-preview/']), { outDir: 'out', base: '/margaritacuesta-preview', preview: true });
+  assert.deepEqual(parseArgs(['out', '--preview', '--base', '/margaritaturealtor-preview/']), { outDir: 'out', base: '/margaritaturealtor-preview', preview: true });
   assert.deepEqual(parseArgs(['--base=/x']), { outDir: undefined, base: '/x', preview: false });
   assert.throws(() => parseArgs(['--base']), /--base needs/);
   assert.throws(() => parseArgs(['--base', 'no-slash']), /--base needs/);
@@ -109,7 +109,7 @@ test('build CLI accepts --base=/x and --base /x, and rejects anything else', () 
 });
 
 test('publish-preview.sh refuses any repo not named *-preview', () => {
-  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritacuesta.com' }, encoding: 'utf8' });
+  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritaturealtor.com' }, encoding: 'utf8' });
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /Refusing/);
 });
@@ -140,10 +140,10 @@ test('every local file a page references exists in the build', () => {
 
 test('a GitHub Pages preview prefixes every internal link and is never indexed', () => {
   const dir = tmp('mc-preview-');
-  const { pages: p } = build({ outDir: dir, root: ROOT, identity, listings, now: NOW, base: '/margaritacuesta-preview', preview: true });
+  const { pages: p } = build({ outDir: dir, root: ROOT, identity, listings, now: NOW, base: '/margaritaturealtor-preview', preview: true });
   for (const html of Object.values(p)) {
     assert.match(html, /<meta name="robots" content="noindex, nofollow">/);
-    for (const [, ref] of html.matchAll(/(?:src|href|data-pdf)="(\/[^"]*)"/g)) assert.ok(ref.startsWith('/margaritacuesta-preview/'), ref);
+    for (const [, ref] of html.matchAll(/(?:src|href|data-pdf)="(\/[^"]*)"/g)) assert.ok(ref.startsWith('/margaritaturealtor-preview/'), ref);
   }
   assert.match(readFileSync(join(dir, 'robots.txt'), 'utf8'), /Disallow: \//);
   assert.doesNotMatch(pages['/'], /noindex/);
@@ -175,6 +175,16 @@ test('English and Spanish copy have the same shape', () => {
 });
 
 /** Width of a JPEG from its SOF marker (stdlib only). */
+/** Width from a WebP header: lossy (VP8), lossless (VP8L) or extended (VP8X). */
+function webpWidth(file) {
+  const b = readFileSync(file);
+  const kind = b.toString('ascii', 12, 16);
+  if (kind === 'VP8 ') return b.readUInt16LE(26) & 0x3fff;
+  if (kind === 'VP8L') return 1 + (((b[22] & 0x3f) << 8) | b[21]);
+  if (kind === 'VP8X') return 1 + b.readUIntLE(24, 3);
+  throw new Error(`not a WebP: ${file}`);
+}
+
 function jpegWidth(file) {
   const b = readFileSync(file);
   for (let i = 2; i < b.length; ) {
@@ -191,7 +201,8 @@ test('every srcset width descriptor matches the real image width', () => {
     for (const [, set] of html.matchAll(/srcset="([^"]+)"/g)) {
       for (const cand of set.split(',')) {
         const [src, w] = cand.trim().split(/\s+/);
-        assert.equal(`${jpegWidth(join(out, src))}w`, w, `${src} is not ${w}`);
+        const f = join(out, src);
+        assert.equal(`${src.endsWith('.webp') ? webpWidth(f) : jpegWidth(f)}w`, w, `${src} is not ${w}`);
       }
     }
   }
@@ -295,5 +306,65 @@ test('fine print meets 4.5:1 contrast on every ground it sits on', () => {
 });
 
 test('GSAP loads only on the page that animates with it', () => {
-  for (const [path, html] of Object.entries(pages)) assert.equal(/gsap\.min\.js/.test(html), path === '/' || path === '/es/', path);
+  for (const [path, html] of Object.entries(pages)) assert.equal(/gsap-[\d.]+\.min\.js/.test(html), path === '/' || path === '/es/', path);
+});
+
+// Step 6 (Addisuna-grade audit, 19 Oct 2026): mobile speed, accessibility, AI search.
+test('pages load nothing from third parties: fonts and GSAP are self-hosted', () => {
+  for (const [path, html] of Object.entries(pages)) {
+    const markup = html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '');
+    const loading = markup.match(/<(?:script|img|source)[^>]*>|<link(?![^>]*rel="(?:canonical|alternate)")[^>]*>/g) || [];
+    for (const tag of loading) assert.doesNotMatch(tag, /(?:src|href|srcset)="https?:\/\//, `${path}: ${tag}`);
+    assert.doesNotMatch(markup, /fonts\.googleapis|fonts\.gstatic|cdnjs/, path);
+  }
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  for (const [, f] of css.matchAll(/url\(\/(assets\/fonts\/[^)]+)\)/g)) assert.ok(existsSync(join(ROOT, f)), f);
+});
+
+test('the hero photo is served as WebP and preloaded on the home page', () => {
+  for (const lang of ['en', 'es']) {
+    const html = pages[COPY[lang].paths.home];
+    assert.match(html, /<link rel="preload" as="image" imagesrcset="[^"]*portrait-480\.webp 480w/);
+    assert.match(html, /<picture><source type="image\/webp" srcset="[^"]*portrait-480\.webp[^>]*><img[^>]*fetchpriority="high"/);
+  }
+});
+
+test('without WebP files the pages fall back to plain JPEG images', () => {
+  assert.deepEqual(webpIndex(tmp('mc-nowebp-')), {});
+  const html = renderLanguage({ identity, listings, copy: COPY.en, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {} })['/'];
+  assert.doesNotMatch(html, /<picture>|\.webp/);
+  assert.match(html, /<img src="\/assets\/img\/margarita-cuesta-portrait-1200\.jpg"/);
+});
+
+test('the FAQ schema repeats the questions on the page word for word, in each language', () => {
+  for (const lang of ['en', 'es']) {
+    const html = pages[COPY[lang].paths.home];
+    const faq = graphOf(html).find((n) => n['@type'] === 'FAQPage');
+    assert.ok(faq, lang);
+    const text = visibleText(html).replace(/\s+/g, ' ');
+    assert.equal(faq.mainEntity.length, COPY[lang].faq.items.length);
+    for (const q of faq.mainEntity) {
+      assert.ok(text.includes(esc(q.name).replace(/&#39;/g, "'")) || html.includes(esc(q.name)), q.name);
+      assert.ok(html.includes(esc(q.acceptedAnswer.text)), q.name);
+    }
+  }
+  assert.ok(!graphOf(pages['/work-with-me/']).some((n) => n['@type'] === 'FAQPage'), 'FAQ schema only where the FAQ is');
+});
+
+test('her Person node names Sequoia Builders, the business she co-owns', () => {
+  const person = graphOf(pages['/']).find((n) => n['@type'] === 'Person');
+  assert.equal(person.affiliation[0].name, identity.ventures[0].name);
+});
+
+test('llms.txt carries the FAQ, the toolkit and the privacy notice', () => {
+  const t = readFileSync(join(out, 'llms.txt'), 'utf8');
+  for (const [q] of COPY.en.faq.items) assert.ok(t.includes(`### ${q}`), q);
+  assert.ok(t.includes(GUIDE_PDF.en) && t.includes(COPY.en.paths.privacy));
+});
+
+test('every piece of content sits inside a landmark (open-house bar, call button)', () => {
+  const html = pages['/'];
+  assert.match(html, /<aside class="announce"[^>]*aria-label=/);
+  assert.match(html, /<a class="float-call"[^>]*>[\s\S]*?<\/a>\s*<\/footer>/);
+  assert.doesNotMatch(pages['/work-with-me/'], /<aside class="work-side"/);
 });

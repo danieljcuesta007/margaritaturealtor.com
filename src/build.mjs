@@ -26,6 +26,19 @@ export function loadListings(root = ROOT) {
   return JSON.parse(readFileSync(join(root, 'data', 'listings.json'), 'utf8')).listings;
 }
 
+/** { name: [widths] } for the WebP sizes in assets/img/w (scripts/make-webp.sh). Missing folder = {}. */
+export function webpIndex(root = ROOT) {
+  const dir = join(root, 'assets', 'img', 'w');
+  if (!existsSync(dir)) return {};
+  const idx = {};
+  for (const f of readdirSync(dir)) {
+    const m = /^(.+)-(\d+)\.webp$/.exec(f);
+    if (m) (idx[m[1]] ||= []).push(Number(m[2]));
+  }
+  for (const k in idx) idx[k].sort((a, b) => a - b);
+  return idx;
+}
+
 const minCss = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,>])\s*/g, '$1').trim();
 
 /**
@@ -64,7 +77,9 @@ export function build({
   preview = false,
 } = {}) {
   assertSafeOutDir(outDir, root);
-  const css = minCss(readFileSync(join(root, 'src', 'styles.css'), 'utf8'));
+  // The stylesheet is inlined, so its root-relative font URLs need the preview prefix too.
+  const css = minCss(readFileSync(join(root, 'src', 'styles.css'), 'utf8')).replaceAll('url(/', `url(${base}/`);
+  const webp = webpIndex(root);
   const site = identity.site;
   const all = LANGS.map((l) => COPY[l]);
 
@@ -78,7 +93,7 @@ export function build({
 
   const pages = {};
   for (const copy of all) {
-    const rendered = renderLanguage({ identity, listings, copy, all, css, script: client.body, base, preview, now, guidePdf: GUIDE_PDF, journeyImages: JOURNEY_IMAGES });
+    const rendered = renderLanguage({ identity, listings, copy, all, css, script: client.body, base, preview, now, guidePdf: GUIDE_PDF, journeyImages: JOURNEY_IMAGES, webp });
     for (const [path, html] of Object.entries(rendered)) {
       const file = join(outDir, path, 'index.html');
       mkdirSync(dirname(file), { recursive: true });
@@ -128,6 +143,7 @@ export function llmsTxt(identity, listings = []) {
 ## Pages
 - [English](${identity.site}/): profile, listings, services, reviews
 - [Work with me](${identity.site}/work-with-me/): intake form and scheduling
+- [Trabajar conmigo](${identity.site}/es/trabajar-conmigo/): formulario en español
 - [Español](${identity.site}/es/): perfil, propiedades, servicios, opiniones
 
 ## About, in her words
@@ -138,11 +154,20 @@ ${active.length ? active.map((l) => `- ${l.address}, ${l.locality}, ${l.region} 
 
 ## Profiles
 ${identity.profiles.map((p) => `- [${p.label}](${p.url})`).join('\n')}
+
+## Free resource
+- [The Triangle Home Buyer's Toolkit](${identity.site}/${GUIDE_PDF.en}) (PDF; [en español](${identity.site}/${GUIDE_PDF.es})): ten costly mistakes, cash-to-close and monthly cost worksheets, a home-tour scorecard, offer-to-keys steps for North Carolina.
+${(identity.ventures || []).map((v) => `\n## Also\n- ${identity.name} is a ${v.role.en.toLowerCase()} of [${v.name}](${v.url}), a home builder in the Triangle, and discloses this to every client.\n`).join('')}
+## Questions buyers and sellers ask
+${COPY.en.faq.items.map(([q, a]) => `### ${q}\n${a}`).join('\n\n')}
+
+## Privacy
+- [Privacy notice](${identity.site}${COPY.en.paths.privacy})
 `;
 }
 
 function notFound(identity, css, base) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${identity.name}</title><meta name="robots" content="noindex"><link rel="icon" href="${base}/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;600&display=swap"><style>${css}</style></head>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${identity.name}</title><meta name="robots" content="noindex"><link rel="icon" href="${base}/favicon.svg" type="image/svg+xml"><style>${css}</style></head>
 <body><main class="wrap" style="padding:120px 0;max-width:760px"><p class="eyebrow">404</p><h1>This page moved, or never existed.</h1><p class="lede">Esta página no existe.</p><div class="cta-row"><a class="btn btn-ink" href="${base}/">${identity.name}</a><a class="btn btn-tiff" href="${base}/es/">Español</a><a class="btn btn-ghost" href="tel:${identity.contact.phoneE164}">${identity.contact.phoneDisplay}</a></div></main></body></html>
 `;
 }

@@ -53,6 +53,33 @@ const ICON = {
 };
 const icon = (name, cls = 'i') => (!ICON[name] ? '' : `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[name]}</svg>`);
 
+/**
+ * WebP sizes made by scripts/make-webp.sh live in assets/img/w/<name>-<width>.webp;
+ * ctx.webp maps <name> to its widths. <name> is the JPEG's own name, or that name
+ * without a -640/-1200 size suffix (portrait-1200.jpg -> portrait).
+ */
+function webpOf(ctx, jpg) {
+  const base = jpg.replace(/^.*\//, '').replace(/\.jpg$/, '');
+  for (const name of [base, base.replace(/-\d{3,4}$/, '')]) if (ctx.webp?.[name]?.length) return { name, widths: ctx.webp[name] };
+  return null;
+}
+function webpSet(ctx, jpg) {
+  const w = webpOf(ctx, jpg);
+  return w ? w.widths.map((n) => `${ctx.u(`/assets/img/w/${w.name}-${n}.webp`)} ${n}w`).join(', ') : '';
+}
+/** The <img> wrapped in a <picture> with a WebP source when one exists; the plain <img> otherwise. */
+function picture(ctx, jpg, sizes, img) {
+  const set = webpSet(ctx, jpg);
+  return set ? `<picture><source type="image/webp" srcset="${set}" sizes="${sizes}">${img}</picture>` : img;
+}
+/** The widest WebP up to `max`px, for places a srcset cannot go (an SVG <image>). */
+function webpAtMost(ctx, jpg, max) {
+  const w = webpOf(ctx, jpg);
+  const fit = w?.widths.filter((n) => n <= max).sort((a, b) => b - a)[0];
+  return fit ? `/assets/img/w/${w.name}-${fit}.webp` : `/${jpg}`;
+}
+const HERO_SIZES = '(min-width: 900px) 400px, 88vw';
+
 const EHO = `<svg class="eho" viewBox="0 0 40 40" role="img" aria-label="Equal Housing Opportunity"><path d="M20 3 2 17h4v20h28V17h4z" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="19" width="16" height="3.5" fill="currentColor"/><rect x="12" y="26" width="16" height="3.5" fill="currentColor"/></svg>`;
 
 /* ---------- shared chrome ---------- */
@@ -83,10 +110,10 @@ ${all.map((x) => `<link rel="alternate" hreflang="${x.htmlLang}" href="${site}${
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="${u('/favicon.svg')}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${u('/apple-touch-icon.png')}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap">
-<style>${ctx.css}</style>
+<link rel="preload" href="${u('/assets/fonts/manrope-variable.woff2')}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="${u('/assets/fonts/instrument-serif.woff2')}" as="font" type="font/woff2" crossorigin>
+${page === 'home' ? `<link rel="preload" as="image" imagesrcset="${webpSet(ctx, identity.images.portrait)}" imagesizes="${HERO_SIZES}" type="image/webp">
+` : ''}<style>${ctx.css}</style>
 <script type="application/ld+json">${JSON.stringify(graph).replace(/</g, '\\u003c')}</script>
 </head>`;
 }
@@ -96,13 +123,13 @@ function announce(ctx) {
   const next = nextOpenHouse(listings, now);
   if (!next) return '';
   const { listing: l, oh } = next;
-  return `<div class="announce" data-ends="${oh.end}">
+  return `<aside class="announce" data-ends="${oh.end}" aria-label="${esc(c.announce.label)}">
   <div class="wrap announce-inner">
     <span class="announce-tag">${esc(c.announce.label)}</span>
     <span class="announce-text"><strong>${esc(openHouseLabel(oh, c.htmlLang))}</strong> <span class="announce-addr">· ${esc(l.address)}, ${esc(l.locality)}</span></span>
     <a class="announce-cta" href="${u(c.paths.work)}?goal=buy&amp;listing=${encodeURIComponent(l.id)}">${esc(c.announce.cta)} ${icon('arrow')}</a>
   </div>
-</div>`;
+</aside>`;
 }
 
 function header(ctx, page) {
@@ -166,6 +193,7 @@ function footer(ctx) {
     <p>“${esc(c.footer.verse)}” <span>${esc(c.footer.verseRef)}</span></p>
     <p class="fine">© <span data-year>2026</span> ${esc(identity.name)} · <a href="${u(c.paths.privacy)}">${esc(c.footer.privacy)}</a> · <a href="${u(other.paths[page])}" hreflang="${other.htmlLang}">${esc(c.otherLabel)}</a></p>
   </div>
+  <a class="float-call" href="${tel}">${icon('phone')}<span>${esc(c.callShort)}</span></a>
 </footer>`;
 }
 
@@ -231,8 +259,7 @@ ${body}
 </main>
 ${footer(ctx)}
 ${popup(ctx)}
-<a class="float-call" href="tel:${ctx.identity.contact.phoneE164}">${icon('phone')}<span>${esc(ctx.c.callShort)}</span></a>
-${pageName === 'home' ? '<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>' : ''}
+${pageName === 'home' ? `<script src="${ctx.u('/assets/vendor/gsap-3.12.5.min.js')}" defer></script>` : ''}
 <script>${ctx.script}</script>
 </body>
 </html>
@@ -286,7 +313,7 @@ function journeys(ctx) {
         </defs>
         ${journeyImages
           .map(
-            (src, i) => `<g class="j-layer${i === 0 ? ' is-on' : ''}" data-layer="${i}" clip-path="url(#j-clip-${i})"><image href="${u('/' + src)}" width="500" height="500" preserveAspectRatio="xMidYMid slice"/></g>`,
+            (src, i) => `<g class="j-layer${i === 0 ? ' is-on' : ''}" data-layer="${i}" clip-path="url(#j-clip-${i})"><image href="${u(webpAtMost(ctx, src, 960))}" width="500" height="500" preserveAspectRatio="xMidYMid slice"/></g>`,
           )
           .join('\n        ')}
       </svg>
@@ -305,7 +332,7 @@ function listingCard(ctx, l) {
   <div class="flip-inner">
     <div class="face front">
       <div class="photo">
-        <img src="${u('/' + l.photos[0])}" alt="${esc(l.address)}, ${esc(l.locality)}" width="1280" height="720" loading="lazy">
+        ${picture(ctx, l.photos[0], '(min-width: 420px) 360px, 92vw', `<img src="${u('/' + l.photos[0])}" alt="${esc(l.address)}, ${esc(l.locality)}" width="1280" height="720" loading="lazy" decoding="async">`)}
         ${oh ? `<span class="chip" data-ends="${oh.end}"><b>${esc(L.openHouse)}</b> ${esc(openHouseLabel(oh, c.htmlLang))}</span>` : ''}
       </div>
       <div class="front-body">
@@ -385,7 +412,7 @@ function homeBody(ctx) {
     </div>
     <figure class="hero-photo">
       <div class="hero-arch" aria-hidden="true"></div>
-      <img src="${u('/' + identity.images.portrait)}" srcset="${u('/' + identity.images.portraitSmall)} 640w, ${u('/' + identity.images.portrait)} 1200w" sizes="(min-width: 900px) 440px, 82vw" width="1200" height="1800" alt="${esc(identity.name)}, REALTOR®" fetchpriority="high">
+      ${picture(ctx, identity.images.portrait, HERO_SIZES, `<img src="${u('/' + identity.images.portrait)}" srcset="${u('/' + identity.images.portraitSmall)} 640w, ${u('/' + identity.images.portrait)} 1200w" sizes="${HERO_SIZES}" width="1200" height="1800" alt="${esc(identity.name)}, REALTOR®" fetchpriority="high">`)}
       <figcaption class="badge">${esc(h.badge)}</figcaption>
     </figure>
   </div>
@@ -431,7 +458,7 @@ ${sequoiaBand(ctx)}
 <section id="about" class="about" aria-labelledby="about-h">
   <div class="wrap about-grid">
     <figure class="about-photo">
-      <img src="${u('/' + identity.images.seated)}" srcset="${u('/' + identity.images.seatedSmall)} 640w, ${u('/' + identity.images.seated)} 1200w" sizes="(min-width: 900px) 420px, 90vw" width="1200" height="1800" alt="${esc(identity.name)}" loading="lazy">
+      ${picture(ctx, identity.images.seated, '(min-width: 900px) 420px, 90vw', `<img src="${u('/' + identity.images.seated)}" srcset="${u('/' + identity.images.seatedSmall)} 640w, ${u('/' + identity.images.seated)} 1200w" sizes="(min-width: 900px) 420px, 90vw" width="1200" height="1800" alt="${esc(identity.name)}" loading="lazy" decoding="async">`)}
     </figure>
     <div class="about-copy">
       <p class="eyebrow">${esc(c.about.eyebrow)}</p>
@@ -462,6 +489,18 @@ ${sequoiaBand(ctx)}
     <h2 id="reviews-h">${esc(c.reviews.heading)}</h2>
     <div class="quote-grid">
       ${identity.testimonials.map((t) => `<figure class="quote"><blockquote lang="${t.lang}"><p>${esc(t.text)}</p></blockquote><figcaption>${esc(t.name)}</figcaption></figure>`).join('\n      ')}
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="faq" aria-labelledby="faq-h">
+  <div class="wrap faq-inner">
+    <div>
+      <p class="eyebrow">${esc(c.faq.eyebrow)}</p>
+      <h2 id="faq-h">${esc(c.faq.heading)}</h2>
+    </div>
+    <div class="faq-list">
+      ${c.faq.items.map(([q, a], i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n      ')}
     </div>
   </div>
 </section>
@@ -508,13 +547,13 @@ function workBody(ctx) {
           </div>`;
   return `<section class="work">
   <div class="wrap work-grid">
-    <aside class="work-side">
+    <div class="work-side">
       <p class="eyebrow">${esc(W.eyebrow)}</p>
       <h1>${esc(W.heading)}</h1>
       <p class="lede">${esc(W.lede)}</p>
-      <figure class="work-portrait"><img src="${ctx.u('/' + identity.images.portraitSmall)}" width="640" height="960" alt="${esc(identity.name)}"></figure>
+      <figure class="work-portrait">${picture(ctx, identity.images.portrait, '160px', `<img src="${ctx.u('/' + identity.images.portraitSmall)}" width="640" height="960" alt="${esc(identity.name)}">`)}</figure>
       <p class="fine">${esc(W.privacy)}</p>
-    </aside>
+    </div>
     <form class="intake" novalidate data-api="${esc(identity.api.leads)}" data-booking="${esc(JSON.stringify(bookingMap(identity)))}" data-email="${identity.contact.email}" data-wa="${identity.contact.whatsapp}" data-subject="${esc(W.subject)}" data-lang="${c.lang}">
       <ol class="stepper">${W.steps.map((s, i) => `<li${i === 0 ? ' class="is-on" aria-current="step"' : ''}><span>${i + 1}</span><em>${esc(s)}</em></li>`).join('')}</ol>
       <p class="listing-chip" hidden><span>${esc(F.listing)}:</span> <strong data-listing-name></strong><input type="hidden" name="listing"></p>
@@ -631,9 +670,9 @@ function privacyBody(ctx) {
  * Renders every page for one language and returns { [path]: html }.
  * base: prefix for internal links ('' on the real domain, '/repo-name' on GitHub Pages).
  */
-export function renderLanguage({ identity, listings, copy, all, css, script, base = '', preview = false, now = new Date(), guidePdf, journeyImages }) {
+export function renderLanguage({ identity, listings, copy, all, css, script, base = '', preview = false, now = new Date(), guidePdf, journeyImages, webp = {} }) {
   const other = all.find((x) => x !== copy);
-  const ctx = { identity, listings, c: copy, all, other, css, script, preview, now, guidePdf, journeyImages, site: identity.site, u: (p) => `${base}${p}` };
+  const ctx = { identity, listings, c: copy, all, other, css, script, preview, now, guidePdf, journeyImages, webp, site: identity.site, u: (p) => `${base}${p}` };
   const home = page(ctx, 'home', homeBody(ctx), {
     title: copy.title,
     description: copy.metaDescription,
