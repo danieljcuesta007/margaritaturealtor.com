@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { buildGraph } from './schema.mjs';
 
 export const esc = (s) =>
@@ -80,8 +81,12 @@ function webpAtMost(ctx, jpg, max) {
 }
 const HERO_SIZES = '(min-width: 900px) 400px, 88vw';
 
-/** Her mark: the arch from the hero portrait with M and C drawn in navy (assets/mark.svg is the same drawing). */
-const MARK = (cls = 'mark') => `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M10 60V30a22 22 0 0 1 44 0v30z" fill="#81D8D0"/><g fill="none" stroke="#0F2236" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 50V31l8 12 8-12v19"/><path d="M49.8 34.2a8.6 8.6 0 1 0 0 11.6"/></g></svg>`;
+/**
+ * Her mark (assets/mark.svg, also the tab icon): the arch from the hero portrait with
+ * M and C in navy. Read from the file so there is one drawing, inlined with a class.
+ */
+const MARK_SVG = readFileSync(new URL('../assets/mark.svg', import.meta.url), 'utf8').trim();
+const MARK = (cls = 'mark') => MARK_SVG.replace(/<svg [^>]*>/, (t) => t.replace(/ role="img" aria-label="[^"]*"/, '').replace('<svg ', `<svg class="${cls}" aria-hidden="true" focusable="false" `));
 
 const EHO = `<svg class="eho" viewBox="0 0 40 40" role="img" aria-label="Equal Housing Opportunity"><path d="M20 3 2 17h4v20h28V17h4z" fill="none" stroke="currentColor" stroke-width="3"/><rect x="12" y="19" width="16" height="3.5" fill="currentColor"/><rect x="12" y="26" width="16" height="3.5" fill="currentColor"/></svg>`;
 
@@ -345,7 +350,7 @@ function listingFeature(ctx, l) {
       ${picture(ctx, main, '(min-width: 960px) 720px, 94vw', `<img src="${u('/' + main)}" alt="${alt(0)}" width="1280" height="720" loading="lazy" decoding="async" data-main>`)}
       ${oh ? `<span class="chip" data-ends="${oh.end}"><b>${esc(L.openHouse)}</b> ${esc(openHouseLabel(oh, c.htmlLang))}</span>` : ''}
     </div>
-    ${l.photos.length > 1 ? `<div class="thumbs">${l.photos.map((ph, i) => `<button type="button" class="thumb${i === 0 ? ' is-on' : ''}" aria-pressed="${i === 0}" aria-label="${esc(L.photoOf)} ${i + 1}" data-src="${u(webpAtMost(ctx, ph, 960))}" data-alt="${alt(i)}"><img src="${u(webpAtMost(ctx, ph, 640))}" alt="" width="160" height="90" loading="lazy" decoding="async"></button>`).join('')}</div>` : ''}
+    ${l.photos.length > 1 ? `<div class="thumbs">${l.photos.map((ph, i) => `<button type="button" class="thumb${i === 0 ? ' is-on' : ''}" aria-pressed="${i === 0}" aria-label="${esc(L.photoOf)} ${i + 1}" data-src="${u(webpAtMost(ctx, ph, 960))}" data-alt="${alt(i)}"><img src="${u(webpAtMost(ctx, ph, 320))}" alt="" width="160" height="100" loading="lazy" decoding="async"></button>`).join('')}</div>` : ''}
   </div>
   <div class="feature-body">
     <p class="kick">${esc(sold ? L.sold : L.active)}${l.mls ? ` · MLS #${esc(l.mls)}` : ''}</p>
@@ -379,13 +384,13 @@ function areasSection(ctx) {
     </div>
     <div class="area-grid">
       ${areas.map((a) => `<article class="area">
-        ${a.photo ? picture(ctx, a.photo, '(min-width: 1100px) 340px, (min-width: 720px) 45vw, 92vw', `<img class="area-photo" src="${u('/' + a.photo)}" alt="${esc(a.name)}" loading="lazy" decoding="async">`) : ''}
-        <p class="area-county">${esc(a.county)}</p>
+        ${a.photo ? picture(ctx, a.photo, '(min-width: 1100px) 340px, (min-width: 720px) 45vw, 92vw', `<img class="area-photo" src="${u('/' + a.photo)}" alt="${esc(a.name)}" width="800" height="600" loading="lazy" decoding="async">`) : ''}
+        ${a.county ? `<p class="area-county">${esc(a.county)}</p>` : ''}
         <h3>${esc(a.name)}</h3>
-        <p class="area-drive">${esc(a.drive[c.lang])}</p>
-        <p>${esc(a[c.lang])}</p>
+        ${a.drive?.[c.lang] ? `<p class="area-drive">${esc(a.drive[c.lang])}</p>` : ''}
+        ${a[c.lang] || a.en ? `<p>${esc(a[c.lang] || a.en)}</p>` : ''}
         ${a.note?.[c.lang] ? `<p class="area-note"><span>${esc(A.fromMargarita)}</span>${esc(a.note[c.lang])}</p>` : ''}
-        <ul class="area-tags">${a.landmarks.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        ${(a.landmarks || []).length ? `<ul class="area-tags">${a.landmarks.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
         <a class="link" href="${u(c.paths.work)}?goal=buy&amp;area=${encodeURIComponent(a.name)}">${esc(A.cta)} ${esc(a.name)} ${icon('arrow')}</a>
       </article>`).join('\n      ')}
     </div>
@@ -411,10 +416,13 @@ function processSection(ctx) {
 function helloVideo(ctx) {
   const { identity, c, u } = ctx;
   const V = c.about.video;
-  const src = identity.video?.[c.lang] || identity.video?.en || '';
+  // Her own language's video first; otherwise any other, labelled with its language.
+  const other = Object.keys(identity.video || {}).find((k) => !k.startsWith('$') && k !== c.lang && identity.video[k]);
+  const src = identity.video?.[c.lang] || (other ? identity.video[other] : '');
+  const label = identity.video?.[c.lang] || !other ? V.label : `${V.label} (${V.other})`;
   const url = src && !/^https?:/.test(src) ? u('/' + src.replace(/^\//, '')) : src;
   const poster = u(webpAtMost(ctx, identity.images.seated, 960));
-  if (url) return `<figure class="hello"><video controls preload="none" playsinline poster="${poster}" src="${esc(url)}" aria-label="${esc(V.label)}"></video><figcaption>${esc(V.label)}</figcaption></figure>`;
+  if (url) return `<figure class="hello"><video controls preload="none" playsinline poster="${poster}" src="${esc(url)}" aria-label="${esc(label)}"></video><figcaption>${esc(label)}</figcaption></figure>`;
   return `<figure class="hello is-soon"><div class="hello-frame"><img src="${poster}" alt="" loading="lazy" decoding="async"><span class="hello-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span></div><figcaption><strong>${esc(V.label)}</strong> · ${esc(V.soon)}</figcaption></figure>`;
 }
 

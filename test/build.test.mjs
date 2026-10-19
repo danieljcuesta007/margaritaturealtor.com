@@ -441,3 +441,15 @@ test('her mark is the tab icon and sits beside her name in the header and footer
 test('the hero carries its proof line in both languages', () => {
   for (const lang of ['en', 'es']) for (const x of COPY[lang].hero.proof) assert.ok(pages[COPY[lang].paths.home].includes(`<li>${esc(x)}</li>`), x);
 });
+
+test('every inline mark is the drawing in assets/mark.svg', () => {
+  const paths = (svg) => [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join('|');
+  const mark = paths(readFileSync(join(ROOT, 'assets', 'mark.svg'), 'utf8'));
+  for (const cls of ['brand-mark', 'foot-mark']) assert.equal(paths(pages['/'].match(new RegExp(`<svg class="${cls}"[\\s\\S]*?</svg>`))[0]), mark, cls);
+});
+
+test('an area with only a name still builds, and a Spanish page says when the video is in English', () => {
+  const r = renderLanguage({ identity: { ...identity, video: { en: 'assets/video/hello.mp4', es: '' } }, listings, copy: COPY.es, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {}, areas: [{ id: 'x', name: 'Apex' }] })['/es/'];
+  assert.match(r, /<h3>Apex<\/h3>/);
+  assert.match(r, /Un saludo de Margarita \(en inglés\)/);
+});

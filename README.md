@@ -28,7 +28,7 @@ typing; quiet for 7, 30, then 90 days after "Not now"; never again once they hav
 - Python 3 (preinstalled on macOS) only for the local preview server.
 - Optional, only to regenerate photo sizes (`scripts/make-webp.sh`): `cwebp` (libwebp) and macOS `sips`. Without them the committed WebP files keep working, and a missing one falls back to the JPEG.
 - Only to regenerate the share image (`scripts/make-images.sh`): Google Chrome and macOS's
-  built-in `sips`. On Linux, screenshot `scripts/og.html` (1200x630) and `scripts/icon.html`
+  built-in `sips`. On Linux, screenshot `scripts/og.html` (1200x630) and `assets/mark.svg` on white
   (180x180) by hand instead.
 
 ## Use
