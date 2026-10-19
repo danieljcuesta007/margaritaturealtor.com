@@ -69,7 +69,7 @@ export function buildGraph(identity, copy, { page = 'home' } = {}) {
     sameAs: identity.profiles.map((p) => p.url),
     // Businesses she co-owns (Sequoia Builders). Its own site names her by this Person's @id in return.
     ...((identity.ventures || []).length
-      ? { affiliation: identity.ventures.map((v) => ({ '@type': 'HomeAndConstructionBusiness', name: v.name, legalName: v.legalName, url: v.url })) }
+      ? { affiliation: identity.ventures.map((v) => ({ '@type': v.type || 'Organization', name: v.name, legalName: v.legalName, url: v.url })) }
       : {}),
   };
 

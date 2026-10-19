@@ -112,7 +112,7 @@ ${all.map((x) => `<link rel="alternate" hreflang="${x.htmlLang}" href="${site}${
 <link rel="apple-touch-icon" href="${u('/apple-touch-icon.png')}">
 <link rel="preload" href="${u('/assets/fonts/manrope-variable.woff2')}" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="${u('/assets/fonts/instrument-serif.woff2')}" as="font" type="font/woff2" crossorigin>
-${page === 'home' ? `<link rel="preload" as="image" imagesrcset="${webpSet(ctx, identity.images.portrait)}" imagesizes="${HERO_SIZES}" type="image/webp">
+${page === 'home' && webpSet(ctx, identity.images.portrait) ? `<link rel="preload" as="image" imagesrcset="${webpSet(ctx, identity.images.portrait)}" imagesizes="${HERO_SIZES}" type="image/webp">
 ` : ''}<style>${ctx.css}</style>
 <script type="application/ld+json">${JSON.stringify(graph).replace(/</g, '\\u003c')}</script>
 </head>`;

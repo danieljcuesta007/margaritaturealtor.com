@@ -10,6 +10,7 @@
   --ink: #0F2236;
   --ink-2: #4A5A6B;
   --ink-3: #5F6E7C; /* 4.8:1 on the palest ground (#EAF8F6): fine print stays readable */
+  --ink-faded: #7A8B97; /* 3.2:1 on #EAF8F6: large text only (the resting journey words) */
   --paper: #FFFFFF;
   --paper-2: #F7FAF9;
   --line: #DDE9E7;
@@ -123,9 +124,9 @@ section { padding: clamp(72px, 10vw, 136px) 0; }
 .j-item:focus-visible { outline: 3px solid var(--tiff-ink); outline-offset: 6px; border-radius: 10px; }
 .j-num { font: 700 1.1rem/1 var(--sans); color: var(--ink-3); margin-top: .55em; transition: color .4s ease, transform .4s ease; }
 /* Resting paths are faded with a solid colour, not opacity, so they still pass 3:1 for large text. */
-.j-name { font: 400 clamp(2.6rem, 6vw, 4.6rem)/.92 var(--serif); letter-spacing: -.02em; color: #7A8B97; transition: color .5s ease, opacity .5s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
+.j-name { font: 400 clamp(2.6rem, 6vw, 4.6rem)/.92 var(--serif); letter-spacing: -.02em; color: var(--ink-faded); transition: color .5s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
 .j-item.is-on .j-num { color: var(--tiff-ink); transform: scale(1.1); }
-.j-item.is-on .j-name { color: var(--ink); opacity: 1; transform: translateX(14px); font-style: italic; }
+.j-item.is-on .j-name { color: var(--ink); transform: translateX(14px); font-style: italic; }
 .j-item:hover .j-name { color: var(--ink-2); }
 .j-hint { margin-top: 28px; font-size: .84rem; color: var(--ink-3); }
 .j-stage { position: relative; display: grid; place-items: center; }

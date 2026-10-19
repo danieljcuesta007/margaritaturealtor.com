@@ -8,6 +8,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { dirname, join, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COPY, LANGS } from './copy.mjs';
@@ -30,12 +31,26 @@ export function loadListings(root = ROOT) {
 export function webpIndex(root = ROOT) {
   const dir = join(root, 'assets', 'img', 'w');
   if (!existsSync(dir)) return {};
+  // sources.json records which JPEG (and its sha256) each set was made from. A set whose
+  // JPEG has changed or gone is skipped, so a replaced photo never shows its old WebP.
+  let sources = {};
+  try { sources = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')); } catch {}
+  const fresh = (name) => {
+    const src = sources[name];
+    if (!src) return false;
+    const jpg = join(root, 'assets', 'img', src.file);
+    if (!existsSync(jpg)) return false;
+    return createHash('sha256').update(readFileSync(jpg)).digest('hex') === src.sha256;
+  };
   const idx = {};
   for (const f of readdirSync(dir)) {
     const m = /^(.+)-(\d+)\.webp$/.exec(f);
     if (m) (idx[m[1]] ||= []).push(Number(m[2]));
   }
-  for (const k in idx) idx[k].sort((a, b) => a - b);
+  for (const k of Object.keys(idx)) {
+    if (!fresh(k)) { console.warn(`WebP for ${k} is stale or untracked; serving the JPEG (run scripts/make-webp.sh).`); delete idx[k]; continue; }
+    idx[k].sort((a, b) => a - b);
+  }
   return idx;
 }
 
@@ -143,7 +158,7 @@ export function llmsTxt(identity, listings = []) {
 ## Pages
 - [English](${identity.site}/): profile, listings, services, reviews
 - [Work with me](${identity.site}/work-with-me/): intake form and scheduling
-- [Trabajar conmigo](${identity.site}/es/trabajar-conmigo/): formulario en español
+- [Trabajar conmigo](${identity.site}${COPY.es.paths.work}): formulario en español
 - [Español](${identity.site}/es/): perfil, propiedades, servicios, opiniones
 
 ## About, in her words
@@ -157,7 +172,7 @@ ${identity.profiles.map((p) => `- [${p.label}](${p.url})`).join('\n')}
 
 ## Free resource
 - [The Triangle Home Buyer's Toolkit](${identity.site}/${GUIDE_PDF.en}) (PDF; [en español](${identity.site}/${GUIDE_PDF.es})): ten costly mistakes, cash-to-close and monthly cost worksheets, a home-tour scorecard, offer-to-keys steps for North Carolina.
-${(identity.ventures || []).map((v) => `\n## Also\n- ${identity.name} is a ${v.role.en.toLowerCase()} of [${v.name}](${v.url}), a home builder in the Triangle, and discloses this to every client.\n`).join('')}
+${(identity.ventures || []).length ? `\n## Also\n${identity.ventures.map((v) => `- ${identity.name} is a ${v.role.en.toLowerCase()} of [${v.name}](${v.url})${v.summary ? `, ${v.summary}` : ''}, and discloses this to every client.`).join('\n')}\n` : ''}
 ## Questions buyers and sellers ask
 ${COPY.en.faq.items.map(([q, a]) => `### ${q}\n${a}`).join('\n\n')}
 

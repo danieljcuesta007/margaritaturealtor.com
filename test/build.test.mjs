@@ -1,6 +1,7 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -174,7 +175,6 @@ test('English and Spanish copy have the same shape', () => {
   assert.deepEqual(shape(GUIDE.es), shape(GUIDE.en));
 });
 
-/** Width of a JPEG from its SOF marker (stdlib only). */
 /** Width from a WebP header: lossy (VP8), lossless (VP8L) or extended (VP8X). */
 function webpWidth(file) {
   const b = readFileSync(file);
@@ -185,6 +185,7 @@ function webpWidth(file) {
   throw new Error(`not a WebP: ${file}`);
 }
 
+/** Width of a JPEG from its SOF marker (stdlib only). */
 function jpegWidth(file) {
   const b = readFileSync(file);
   for (let i = 2; i < b.length; ) {
@@ -332,7 +333,7 @@ test('the hero photo is served as WebP and preloaded on the home page', () => {
 test('without WebP files the pages fall back to plain JPEG images', () => {
   assert.deepEqual(webpIndex(tmp('mc-nowebp-')), {});
   const html = renderLanguage({ identity, listings, copy: COPY.en, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {} })['/'];
-  assert.doesNotMatch(html, /<picture>|\.webp/);
+  assert.doesNotMatch(html, /<picture>|\.webp|image\/webp/);
   assert.match(html, /<img src="\/assets\/img\/margarita-cuesta-portrait-1200\.jpg"/);
 });
 
@@ -341,11 +342,12 @@ test('the FAQ schema repeats the questions on the page word for word, in each la
     const html = pages[COPY[lang].paths.home];
     const faq = graphOf(html).find((n) => n['@type'] === 'FAQPage');
     assert.ok(faq, lang);
-    const text = visibleText(html).replace(/\s+/g, ' ');
+    // Look only at the printed FAQ section, never at the JSON-LD the questions came from.
+    const section = html.match(/<section id="faq"[\s\S]*?<\/section>/)[0];
     assert.equal(faq.mainEntity.length, COPY[lang].faq.items.length);
     for (const q of faq.mainEntity) {
-      assert.ok(text.includes(esc(q.name).replace(/&#39;/g, "'")) || html.includes(esc(q.name)), q.name);
-      assert.ok(html.includes(esc(q.acceptedAnswer.text)), q.name);
+      assert.ok(section.includes(`<summary>${esc(q.name)}</summary>`), q.name);
+      assert.ok(section.includes(`<p>${esc(q.acceptedAnswer.text)}</p>`), q.name);
     }
   }
   assert.ok(!graphOf(pages['/work-with-me/']).some((n) => n['@type'] === 'FAQPage'), 'FAQ schema only where the FAQ is');
@@ -367,4 +369,21 @@ test('every piece of content sits inside a landmark (open-house bar, call button
   assert.match(html, /<aside class="announce"[^>]*aria-label=/);
   assert.match(html, /<a class="float-call"[^>]*>[\s\S]*?<\/a>\s*<\/footer>/);
   assert.doesNotMatch(pages['/work-with-me/'], /<aside class="work-side"/);
+});
+
+test('a WebP set whose JPEG has changed is skipped, so a replaced photo never shows the old one', () => {
+  const root = tmp('mc-stale-');
+  mkdirSync(join(root, 'assets', 'img', 'w'), { recursive: true });
+  writeFileSync(join(root, 'assets', 'img', 'a.jpg'), 'new photo');
+  writeFileSync(join(root, 'assets', 'img', 'b.jpg'), 'same photo');
+  for (const n of ['a-640', 'b-640']) writeFileSync(join(root, 'assets', 'img', 'w', `${n}.webp`), '');
+  const sha = (t) => createHash('sha256').update(t).digest('hex');
+  writeFileSync(join(root, 'assets', 'img', 'w', 'sources.json'), JSON.stringify({ a: { file: 'a.jpg', sha256: sha('old photo') }, b: { file: 'b.jpg', sha256: sha('same photo') } }));
+  assert.deepEqual(webpIndex(root), { b: [640] });
+});
+
+test('the committed WebP sets all match their JPEGs, and the hero offers 1200w for sharp phones', () => {
+  const idx = webpIndex(ROOT);
+  assert.deepEqual(idx['margarita-cuesta-portrait'], [480, 720, 960, 1200]);
+  for (const l of listings) assert.ok(idx[l.photos[0].replace(/^.*\/|\.jpg$/g, '')], l.id);
 });
