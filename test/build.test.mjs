@@ -26,8 +26,8 @@ const visibleText = (html) =>
   html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 
-test('builds home and work-with-me in English and Spanish', () => {
-  assert.deepEqual(Object.keys(pages).sort(), ['/', '/es/', '/es/trabajar-conmigo/', '/work-with-me/']);
+test('builds home, work-with-me and privacy in English and Spanish', () => {
+  assert.deepEqual(Object.keys(pages).sort(), ['/', '/es/', '/es/privacidad/', '/es/trabajar-conmigo/', '/privacy/', '/work-with-me/']);
   assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /<html lang="en-US">/);
   assert.match(readFileSync(join(out, 'es', 'trabajar-conmigo', 'index.html'), 'utf8'), /<html lang="es-US">/);
 });
@@ -114,9 +114,9 @@ test('publish-preview.sh refuses any repo not named *-preview', () => {
   assert.match(r.stderr, /Refusing/);
 });
 
-test('hreflang alternates are reciprocal and the sitemap lists all four pages', () => {
+test('hreflang alternates are reciprocal and the sitemap lists every page', () => {
   const site = identity.site;
-  for (const key of ['home', 'work']) {
+  for (const key of ['home', 'work', 'privacy']) {
     for (const c of Object.values(COPY)) {
       const html = pages[c.paths[key]];
       for (const x of Object.values(COPY)) assert.ok(html.includes(`hreflang="${x.htmlLang}" href="${site}${x.paths[key]}"`), `${c.paths[key]} -> ${x.paths[key]}`);
@@ -244,4 +244,56 @@ test('booking config notes ($-keys) never reach the page, and a plain string sti
   assert.doesNotMatch(pages['/work-with-me/'], /created 12 Oct/);
   const { bookingMap } = await import('../src/render.mjs');
   assert.deepEqual(bookingMap({ links: { booking: 'https://x/y' } }), { discovery: 'https://x/y' });
+});
+
+// Audit 14 Oct 2026, P0: the popup promised "unsubscribe anytime" with nothing to subscribe to.
+test('the welcome window only promises email when there is a backend to send it', () => {
+  const html = pages['/'];
+  assert.ok(!identity.api.subscribe || html.includes(COPY.en.popup.privacy));
+  const offline = build({ outDir: tmp('mc-noapi-'), root: ROOT, identity: { ...identity, api: { leads: '', subscribe: '' } }, listings, now: NOW, lastmod: new Date('2026-10-12') }).pages;
+  const online = build({ outDir: tmp('mc-api-'), root: ROOT, identity: { ...identity, api: { leads: 'https://api.x/api/lead', subscribe: 'https://api.x/api/subscribe' } }, listings, now: NOW, lastmod: new Date('2026-10-12') }).pages;
+  for (const [pages, want, not] of [[offline, 'privacyLocal', 'privacy'], [online, 'privacy', 'privacyLocal']]) {
+    for (const lang of ['en', 'es']) {
+      const v = visibleText(pages[COPY[lang].paths.home]);
+      assert.ok(v.includes(COPY[lang].popup[want]), `${lang} ${want}`);
+      assert.ok(!v.includes(COPY[lang].popup[not]), `${lang} not ${not}`);
+    }
+  }
+  assert.match(online['/'], /data-api="https:\/\/api\.x\/api\/subscribe"/);
+});
+
+test('every page links the privacy notice in its own language', () => {
+  for (const [path, html] of Object.entries(pages)) {
+    const lang = path.startsWith('/es/') ? 'es' : 'en';
+    assert.ok(html.includes(`href="${COPY[lang].paths.privacy}"`), path);
+  }
+  assert.match(visibleText(pages['/privacy/']), new RegExp(identity.contact.phoneDisplay.replace(/[()]/g, '\\$&')));
+});
+
+test('"Get new listings first" starts a buyer request instead of opening the guide', () => {
+  for (const lang of ['en', 'es']) {
+    const html = pages[COPY[lang].paths.home];
+    const a = html.match(new RegExp(`<a[^>]*>${COPY[lang].listings.alerts}`));
+    assert.ok(a, lang);
+    assert.match(a[0], new RegExp(`href="${COPY[lang].paths.work}\\?goal=buy"`));
+  }
+});
+
+test('listing cards show beds, baths, size and a showing link without flipping', () => {
+  const front = pages['/'].match(/<div class="face front">[\s\S]*?<div class="face back">/)[0];
+  const l = listings.find((x) => x.status === 'active');
+  assert.match(front, new RegExp(`${l.beds} beds · ${l.baths} baths`));
+  assert.match(front, /class="link front-book" href="\/work-with-me\/\?goal=buy&amp;listing=/);
+});
+
+test('fine print meets 4.5:1 contrast on every ground it sits on', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  const v = (n) => css.match(new RegExp(`--${n}: (#[0-9A-Fa-f]{6})`))[1];
+  const lum = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)).reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  for (const g of ['paper', 'paper-2', 'tiff-wash']) assert.ok(ratio(v('ink-3'), v(g)) >= 4.5, `ink-3 on ${g}`);
+});
+
+test('GSAP loads only on the page that animates with it', () => {
+  for (const [path, html] of Object.entries(pages)) assert.equal(/gsap\.min\.js/.test(html), path === '/' || path === '/es/', path);
 });

@@ -1,6 +1,8 @@
 # Lead system: from "Work with me" to a pre-market email
 
-Status 12 Oct 2026: **front end built, backend designed, not built.** Today both forms
+Status 19 Oct 2026: **front end built; Worker + D1 built and tested in `worker/`, not deployed** (needs her Cloudflare account and the domain; see README "Turning on lead capture"). The 24-48h touchpoint and cron are still design only.
+
+Status 12 Oct 2026: front end built, backend designed, not built. Today both forms
 work without a server: the intake opens the visitor's email (or WhatsApp) with the brief
 ready to send to Margarita, and the guide downloads directly. The pieces below turn that
 into a system that captures every lead, tells her at once, and follows up for her.

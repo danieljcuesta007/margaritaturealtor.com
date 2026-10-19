@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Renders the free guide (src/guide.mjs) to PDF in both languages:
- *   assets/guides/before-you-buy-triangle.pdf
- *   assets/guides/antes-de-comprar-triangulo.pdf
+ * Renders the free buyer toolkit (src/guide.mjs) to PDF in both languages,
+ * at the paths in GUIDE_PDF (src/build.mjs). Seven Letter pages: cover, the
+ * ten mistakes, two worksheets, a tour scorecard and the offer-to-keys steps.
  * Needs Google Chrome (set CHROME=/path/to/chrome if it is elsewhere).
+ * GUIDE_HTML_DIR=/some/dir also keeps the HTML, to look at the pages in a browser.
  */
-import { writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
@@ -51,14 +52,29 @@ li p { margin: 0; color: #4A5A6B; font-size: 10.5pt; }
 .close p { margin: 0 0 6pt; font-size: 10.5pt; }
 .card { font-size: 10pt; line-height: 1.5; }
 .card b { font: 400 15pt/1 'Instrument Serif', serif; display: block; margin-bottom: 4pt; }
+.contents { list-style: none; padding: 0; margin: 18pt 0 0; display: grid; gap: 4pt; counter-reset: c; }
+.contents li { display: block; padding: 0; border: 0; font: 400 14pt/1.3 'Instrument Serif', serif; }
+.contents li::before { content: none; }
+h1.t { font: 400 30pt/1.05 'Instrument Serif', serif; margin: 6pt 0 6pt; }
+.lead { font-size: 11pt; color: #4A5A6B; margin: 0 0 16pt; max-width: 6in; }
+table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+th { font: 700 7.5pt/1.2 Manrope; letter-spacing: .14em; text-transform: uppercase; color: #0D6F69; text-align: left; padding: 0 8pt 6pt 0; }
+td { border-top: 1px solid #DDE9E7; padding: 9pt 8pt 9pt 0; vertical-align: bottom; }
+td.blank { width: 1.25in; border-bottom: 1px solid #0F2236; }
+td.score { width: 1in; border-bottom: 1px solid #0F2236; }
+tr.total td { font-weight: 700; border-top: 2px solid #0F2236; }
+.tip { margin-top: 16pt; background: #EAF8F6; border-radius: 12pt; padding: 12pt 16pt; font-size: 10pt; }
+.notes { margin-top: 14pt; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10pt; }
+.notes div { border: 1px solid #DDE9E7; border-radius: 10pt; height: 1.3in; padding: 8pt; font-size: 8pt; color: #4A5A6B; }
+.steps li { grid-template-columns: 34pt 1fr; padding: 8pt 0; }
 .legal { position: absolute; left: .8in; right: .8in; bottom: .45in; font-size: 7.5pt; color: #7A8896; }
 </style></head><body>
 <section class="page cover">
   <p class="eyebrow" style="color:#0F2236">${lang === 'es' ? 'Guía gratis' : 'Free guide'} · Raleigh · Durham · ${lang === 'es' ? 'el Triángulo' : 'the Triangle'}</p>
   <div>
-    <p class="num">10</p>
-    <h1>${esc(g.title)}</h1>
-    <p class="sub">${esc(g.subtitle)}</p>
+    <h1>${esc(g.kit.title)}</h1>
+    <p class="sub">${esc(g.kit.subtitle)}</p>
+    <ol class="contents">${g.kit.contents.map((x, i) => `<li>${String(i + 1).padStart(2, '0')} · ${esc(x)}</li>`).join('')}</ol>
   </div>
   <div class="by"><img src="${asset(identity.images.portraitSmall)}" alt=""><div><b>${esc(identity.name)}</b>REALTOR® · ${identity.contact.phoneDisplay} · ${identity.contact.email}</div></div>
 </section>
@@ -69,6 +85,39 @@ li p { margin: 0; color: #4A5A6B; font-size: 10.5pt; }
 </section>
 <section class="page">
   <ol style="counter-reset: m 5">${g.items.slice(5).map(([t, b]) => `<li><div><h2>${esc(t)}</h2><p>${esc(b)}</p></div></li>`).join('')}</ol>
+</section>
+<section class="page">
+  <p class="eyebrow">02 · ${esc(g.kit.contents[1])}</p>
+  <h1 class="t">${esc(g.cash.title)}</h1>
+  <p class="lead">${esc(g.cash.intro)}</p>
+  <table><tr><th></th><th>${esc(g.kit.estimate)}</th><th>${esc(g.kit.actual)}</th></tr>
+  ${g.cash.rows.map((r) => `<tr><td>${esc(r)}</td><td class="blank"></td><td class="blank"></td></tr>`).join('')}
+  <tr class="total"><td>${esc(g.kit.total)}</td><td class="blank"></td><td class="blank"></td></tr></table>
+  <p class="tip">${esc(g.cash.note)}</p>
+</section>
+<section class="page">
+  <p class="eyebrow">03 · ${esc(g.kit.contents[2])}</p>
+  <h1 class="t">${esc(g.monthly.title)}</h1>
+  <p class="lead">${esc(g.monthly.intro)}</p>
+  <table><tr><th></th>${g.score.homes.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>
+  ${g.monthly.rows.map((r) => `<tr><td>${esc(r)}</td><td class="score"></td><td class="score"></td><td class="score"></td></tr>`).join('')}
+  <tr class="total"><td>${esc(g.kit.total)}</td><td class="score"></td><td class="score"></td><td class="score"></td></tr></table>
+  <p class="tip">${esc(g.monthly.note)}</p>
+</section>
+<section class="page">
+  <p class="eyebrow">04 · ${esc(g.kit.contents[3])}</p>
+  <h1 class="t">${esc(g.score.title)}</h1>
+  <p class="lead">${esc(g.score.intro)}</p>
+  <table><tr><th></th>${g.score.homes.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>
+  <tr><td>${esc(g.score.address)}</td><td class="score"></td><td class="score"></td><td class="score"></td></tr>
+  ${g.score.rows.map((r) => `<tr><td>${esc(r)}</td><td class="score"></td><td class="score"></td><td class="score"></td></tr>`).join('')}
+  <tr class="total"><td>${esc(g.kit.total)} / ${g.score.rows.length * 5}</td><td class="score"></td><td class="score"></td><td class="score"></td></tr></table>
+  <div class="notes">${g.score.homes.map((h) => `<div>${esc(h)} · ${esc(g.score.notes)}</div>`).join('')}</div>
+</section>
+<section class="page">
+  <p class="eyebrow">05 · ${esc(g.kit.contents[4])}</p>
+  <h1 class="t">${esc(g.steps.title)}</h1>
+  <ol class="steps">${g.steps.items.map(([t, b]) => `<li><div><h2>${esc(t)}</h2><p>${esc(b)}</p></div></li>`).join('')}</ol>
   <div class="close">
     <div><h2>${esc(g.closeTitle)}</h2><p>${esc(g.closeBody)}</p><p><b>${esc(g.cta)}</b></p></div>
     <div class="card"><b>${esc(identity.name)}</b>REALTOR® · ${lang === 'es' ? 'Lic.' : 'License'} #${identity.license.number}<br>${identity.contact.phoneDisplay} (WhatsApp)<br>${identity.contact.email}</div>
@@ -83,7 +132,9 @@ try {
   for (const lang of Object.keys(GUIDE)) {
     const src = join(tmp, `${lang}.html`);
     writeFileSync(src, html(GUIDE[lang], lang));
+    if (process.env.GUIDE_HTML_DIR) writeFileSync(join(process.env.GUIDE_HTML_DIR, `toolkit-${lang}.html`), html(GUIDE[lang], lang));
     const out = join(ROOT, GUIDE_PDF[lang]);
+    mkdirSync(dirname(out), { recursive: true });
     execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--allow-file-access-from-files', '--no-pdf-header-footer', '--virtual-time-budget=5000', `--print-to-pdf=${out}`, pathToFileURL(src).href], { stdio: 'ignore', timeout: 60000 });
     console.log(`Wrote ${GUIDE_PDF[lang]}`);
   }

@@ -6,11 +6,22 @@
  * - no GSAP (CDN blocked): the homes stage swaps images without the shape animation.
  * - no backend (api empty in identity.json): forms hand off to email/WhatsApp
  *   and the guide downloads directly.
- * localStorage only remembers "popup already shown"; losing it is harmless.
+ * localStorage only remembers the welcome window's state (has the toolkit,
+ * said "not now" until <date>); losing it means at worst one extra ask.
  */
 
 export const body = `(function(){
-var d=document, reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var d=document, rm=window.matchMedia('(prefers-reduced-motion: reduce)'), reduce=rm.matches;
+function lget(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lset(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function sget(k){try{return sessionStorage.getItem(k)}catch(e){return null}}
+function sset(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}
+// POST JSON with a time limit, so a hung network never leaves a form spinning.
+function post(url,body,ms){
+  var ctl=window.AbortController?new AbortController():null, t=setTimeout(function(){ if(ctl) ctl.abort(); },ms||10000);
+  return fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
+    .then(function(r){clearTimeout(t);return !!(r&&r.ok)},function(){clearTimeout(t);return false});
+}
 var y=d.querySelector('[data-year]'); if(y) y.textContent=new Date().getFullYear();
 
 // Hide open-house announcements once they are over (the page may be cached).
@@ -30,8 +41,9 @@ d.querySelectorAll('[data-flip]').forEach(function(card){
 var stage=d.querySelector('.j-stage');
 if(stage){
   var items=[].slice.call(d.querySelectorAll('.j-item')), layers=[].slice.call(stage.querySelectorAll('.j-layer'));
-  var active=0, tl=null, touched=false;
-  function show(i){
+  var active=0, tl=null, touched=false, laps=0;
+  // Two laps through the three paths, then it rests on the first one: motion that never stops is noise.
+  function show(i,last){
     active=i;
     items.forEach(function(b,k){b.classList.toggle('is-on',k===i);b.setAttribute('aria-pressed',k===i)});
     layers.forEach(function(g,k){g.classList.toggle('is-on',k===i)});
@@ -39,11 +51,13 @@ if(stage){
     if(tl) tl.kill();
     var sel='#j-clip-'+i+' .path';
     gsap.set(sel,{scale:0,transformOrigin:'50% 50%'});
-    tl=gsap.timeline({repeat:-1,repeatDelay:.6,onRepeat:function(){ if(!touched) show((active+1)%items.length); }});
+    if(last||touched){ tl=gsap.timeline(); tl.to(sel,{scale:1,duration:.8,stagger:{amount:.4,from:'random'},ease:'expo.out'}); return; }
+    tl=gsap.timeline({repeat:-1,repeatDelay:.6,onRepeat:function(){ if(touched) return; laps++; show((active+1)%items.length, laps>=items.length*2-1); }});
     tl.to(sel,{scale:1,duration:.8,stagger:{amount:.4,from:'random'},ease:'expo.out'})
       .to(sel,{scale:1.04,duration:1.4,yoyo:true,repeat:1,ease:'sine.inOut',stagger:{amount:.2,from:'center'}})
       .to(sel,{scale:0,duration:.6,stagger:{amount:.3,from:'edges'},ease:'expo.in'});
   }
+  if(rm.addEventListener) rm.addEventListener('change',function(e){ reduce=e.matches; if(reduce&&window.gsap){ if(tl) tl.kill(); gsap.set('.j-stage .path',{scale:1}); } });
   items.forEach(function(b,i){
     b.addEventListener('mouseenter',function(){touched=true; if(i!==active) show(i)});
     b.addEventListener('focus',function(){touched=true; if(i!==active) show(i)});
@@ -56,30 +70,79 @@ if(stage){
   if(window.gsap) start(); else window.addEventListener('load',start);
 }
 
-// ---- Free guide popup.
+// ---- Welcome window with the free toolkit. Ported from the W.O.W signup prompt:
+// asks once per visit at a good moment (20s of the page actually being looked at,
+// 55% down the home page, or the pointer leaving for the tabs), waits while the
+// visitor is typing or another window is open, never asks someone who has the
+// toolkit, and after "not now" stays quiet for 7, then 30, then 90 days.
 var pop=d.getElementById('guide');
 if(pop && typeof pop.showModal==='function'){
-  var KEY='mc-guide-seen', seen=false;
-  try{ seen=Date.now()-(+localStorage.getItem(KEY)||0) < 14*864e5; }catch(e){}
-  function open(){ if(pop.open) return; pop.showModal(); try{localStorage.setItem(KEY,Date.now())}catch(e){} }
-  pop.querySelector('[data-close]').addEventListener('click',function(){pop.close()});
-  pop.addEventListener('click',function(e){ if(e.target===pop) pop.close(); });
+  var K={done:'mc-guide-done',quiet:'mc-guide-quiet',n:'mc-guide-no',shown:'mc-guide-shown',seen:'mc-attention'};
+  var title=pop.querySelector('#guide-title'), pform=pop.querySelector('form'), fine=matchMedia('(hover: hover) and (pointer: fine)').matches;
+  var rect=null, queued=false, at={x:0,y:0};
+  function measure(){ rect=pop.open?pop.querySelector('.pop-card').getBoundingClientRect():null; }
+  function open(){
+    if(pop.open) return;
+    pop.style.removeProperty('--p-alpha'); pop.removeAttribute('data-solid');
+    pop.showModal(); measure(); title.focus({preventScroll:true}); sset(K.shown,'1');
+  }
+  // State is written the moment the visitor answers, not on 'close', which a background tab may never deliver.
+  function close(why){
+    if(!pop.open) return;
+    if(why==='dismiss' && !lget(K.done)){ var n=(+lget(K.n)||0)+1; lset(K.n,n); lset(K.quiet,Date.now()+[7,30,90][Math.min(n,3)-1]*864e5); }
+    if(why==='have') lset(K.done,Date.now());
+    if(reduce){ pop.close(); return; }
+    pop.classList.add('is-leaving'); setTimeout(function(){ pop.classList.remove('is-leaving'); pop.close(); },180);
+  }
+  pop.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',function(){close('dismiss')}); });
+  pop.querySelector('[data-already]').addEventListener('click',function(){close('have')});
+  pop.addEventListener('click',function(e){ if(e.target===pop) close('dismiss'); });
+  pop.addEventListener('cancel',function(e){ e.preventDefault(); close('dismiss'); });
+
+  // Glass that turns to paper as the pointer approaches (the W.O.W search maths).
+  if(fine){
+    d.addEventListener('pointermove',function(e){
+      if(!pop.open||e.pointerType==='touch') return; at={x:e.clientX,y:e.clientY}; if(queued) return; queued=true;
+      requestAnimationFrame(function(){ queued=false; if(!rect) return;
+        var dx=Math.max(rect.left-at.x,0,at.x-rect.right), dy=Math.max(rect.top-at.y,0,at.y-rect.bottom);
+        var t=1-Math.min(Math.hypot(dx,dy)/190,1); t*=t;
+        pop.style.setProperty('--p-alpha',(.78+.22*t).toFixed(3)); pop.toggleAttribute('data-solid',t>.985); });
+    },{passive:true});
+    addEventListener('resize',measure,{passive:true});
+  }
+
   d.querySelectorAll('[data-open-guide]').forEach(function(b){b.addEventListener('click',open)});
   if(/[?&]guide=1/.test(location.search)) open();
-  else if(!seen && !d.body.classList.contains('page-work')){
-    var armed=true;
-    function auto(){ if(!armed) return; armed=false; open(); }
-    setTimeout(auto,20000);
-    window.addEventListener('scroll',function(){ if(armed && scrollY>(d.body.scrollHeight-innerHeight)*.55) auto(); },{passive:true});
+  else if(!lget(K.done) && Date.now()>(+lget(K.quiet)||0) && !sget(K.shown) && d.body.classList.contains('page-home')){
+    var fired=false, seen=+sget(K.seen)||0, band=d.querySelector('.giveaway');
+    function busy(){
+      var a=d.activeElement, r=band&&band.getBoundingClientRect();
+      return !!(d.querySelector('dialog[open]') || (a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || (r&&r.height&&r.bottom>0&&r.top<innerHeight));
+    }
+    function attempt(){ if(fired||busy()) return; fired=true; clearInterval(tick); open(); }
+    var tick=setInterval(function(){ if(d.hidden) return; seen++; if(seen%5===0) sset(K.seen,seen); if(seen>=20) attempt(); },1000);
+    addEventListener('scroll',function(){ if(seen>=8 && scrollY>(d.documentElement.scrollHeight-innerHeight)*.55) attempt(); },{passive:true});
+    if(fine) d.documentElement.addEventListener('mouseleave',function(e){ if(!e.relatedTarget && e.clientY<=4 && seen>=10) attempt(); });
   }
-  pop.querySelector('form').addEventListener('submit',function(e){
+
+  pform.addEventListener('submit',function(e){
     e.preventDefault();
-    var f=new FormData(e.target), api=pop.dataset.api;
-    var payload={name:f.get('name'),email:f.get('email'),lang:pop.dataset.lang,source:'guide',page:location.pathname};
-    // Open the PDF inside the submit gesture so popup blockers allow it; record the lead in the background.
+    var btn=pform.querySelector('[type=submit]'); if(btn.disabled) return;
+    var f=new FormData(pform), api=pop.dataset.api, name=String(f.get('name')||'').trim(), email=String(f.get('email')||'').trim();
+    // Open the PDF inside the submit gesture so popup blockers allow it.
     window.open(pop.dataset.pdf,'_blank','noopener');
-    e.target.hidden=true; pop.querySelector('.pop-done').hidden=false;
-    if(api) fetch(api,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),keepalive:true}).catch(function(){});
+    lset(K.done,Date.now());
+    var done=pop.querySelector('.pop-done'), note=pop.querySelector('[data-note]'), mail=pop.querySelector('[data-note-mail]');
+    // Sign the one-tap note with what they typed, so Margarita can add them straight away.
+    mail.href=mail.href.replace(/(body=[^&]*)/,function(m){ return m+encodeURIComponent('\\n\\n'+name+' <'+email+'>'); });
+    function showNote(failed){ note.hidden=false; if(failed) note.querySelector('[data-failed]').hidden=false; }
+    pform.hidden=true; done.hidden=false;
+    if(f.get('website')) return; // the honeypot: a person never fills it
+    if(!api){ showNote(false); return; }
+    btn.disabled=true;
+    post(api,{name:name,email:email,lang:pop.dataset.lang,source:'welcome',page:location.pathname},8000).then(function(ok){
+      if(ok) pop.querySelector('[data-saved]').hidden=false; else showNote(true);
+    });
   });
 }
 
@@ -146,11 +209,11 @@ if(form){
     return lines.join('\\n');
   }
   function data(){
-    var o={}; new FormData(form).forEach(function(v,k){ o[k]=v; });
+    var o={}; new FormData(form).forEach(function(v,k){ if(k!=='website') o[k]=v; });
     o.lang=form.dataset.lang; o.submittedAt=new Date().toISOString(); o.page=location.pathname; return o;
   }
   form.addEventListener('submit',function(e){
-    e.preventDefault(); if(!valid(cur)) return;
+    e.preventDefault(); if(form.dataset.busy || !valid(cur)) return;
     // Enter in a field submits the form from any step: treat it as Continue until the last step.
     if(cur<steps.length-1){ go(cur+1,true); return; }
     var text=brief(), name=(form.firstName.value+' '+form.lastName.value).trim();
@@ -159,6 +222,8 @@ if(form){
     var wa=form.dataset.wa+'?text='+encodeURIComponent(subject+'\\n\\n'+text);
     var doneEl=form.querySelector('.done');
     function finish(sent){
+      delete form.dataset.busy; submit.disabled=false;
+      if(!sent) ['[data-done-title]','[data-done-body]'].forEach(function(q){ var el=doneEl.querySelector(q); el.textContent=el.dataset.unsent; });
       steps.forEach(function(s){s.hidden=true}); form.querySelector('.form-nav').hidden=true; form.querySelector('.stepper').hidden=true;
       doneEl.hidden=false; doneEl.focus();
       if(booking){
@@ -175,9 +240,10 @@ if(form){
       }
     }
     var api=form.dataset.api;
+    if(form.website.value) return finish(true); // honeypot
     if(api){
-      fetch(api,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({brief:text,fields:data()})})
-        .then(function(r){ finish(r.ok); },function(){ finish(false); });
+      form.dataset.busy='1'; submit.disabled=true; submit.firstChild.textContent=submit.dataset.sending+' ';
+      post(api,{brief:text,fields:data()},10000).then(finish);
     } else finish(false);
   });
   go(0);
