@@ -260,7 +260,10 @@ section { padding: var(--section) 0; }
 .signature { font: italic 400 2.2rem/1 var(--serif) !important; color: var(--ink) !important; margin: 1.2em 0 1.4em; }
 .creds { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .creds li { background: var(--tiff-wash); color: var(--ink); border-radius: 999px; padding: 8px 14px; font-size: .84rem; font-weight: 600; }
-@media (min-width: 900px) { .about-grid { grid-template-columns: 420px 1fr; gap: 88px; } }
+/* The photo is capped when it stacks (tablet), and grows with the screen beside the copy; the copy keeps a readable measure. */
+.about-photo { max-width: 460px; }
+.about-copy { max-width: 40em; }
+@media (min-width: 900px) { .about-grid { grid-template-columns: minmax(300px, 560px) minmax(0, 1fr); gap: clamp(48px, 6vw, 112px); align-items: start; } .about-photo { max-width: 560px; position: sticky; top: 120px; } }
 
 /* Promises */
 .promises { padding-top: 0; }
@@ -285,6 +288,7 @@ section { padding: var(--section) 0; }
 .quote-tr { font-weight: 500; letter-spacing: 0; color: var(--ink-3); }
 .quote figcaption { margin-top: 18px; font-weight: 700; font-size: .86rem; letter-spacing: .06em; color: var(--tiff-ink); }
 @media (min-width: 760px) { .quote-grid { columns: 2; } }
+@media (min-width: 1400px) { .quote-grid { columns: 3; } }
 
 /* FAQ */
 .faq-inner { display: grid; gap: 32px; }
