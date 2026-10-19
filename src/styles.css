@@ -132,8 +132,8 @@ section { padding: var(--section) 0; }
 .hero-arch { position: absolute; inset: 6% -7% -4% 7%; background: var(--tiff); border-radius: 240px 240px var(--r) var(--r); z-index: 0; }
 .hero-photo img { position: relative; z-index: 1; border-radius: 220px 220px var(--r) var(--r); aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 16%; box-shadow: var(--shadow); }
 .badge { position: absolute; z-index: 2; left: 50%; bottom: -16px; transform: translateX(-50%); background: #fff; color: var(--ink); padding: 11px 18px; border-radius: 999px; font: 600 .86rem/1 var(--sans); box-shadow: var(--shadow); white-space: nowrap; }
-/* Desktop: the portrait fills its column and sits on the page's right edge (the header's line),
-   so copy and photo read as one composition instead of two islands with a gap between. */
+/* Desktop: a bigger headline and the portrait centred in its half, so copy and photo read as
+   one composition instead of two islands at opposite edges (measured: 120-240px between them). */
 @media (min-width: 900px) {
   .hero-grid { grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr); gap: clamp(40px, 5vw, 96px); }
   .hero .hero-photo { width: min(480px, 88%); justify-self: center; }
