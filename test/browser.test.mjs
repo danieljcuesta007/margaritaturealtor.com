@@ -252,3 +252,14 @@ test('an intake that could not be sent says "almost done", never "I have your pl
   assert.equal(await evaluate(`document.querySelector('[data-done-title]').textContent`), 'Almost done: send me your answers.');
   assert.equal(await evaluate(`document.querySelector('[data-fallback]').hidden`), false);
 });
+
+test('an unsent intake never launches the mail app by itself; the visitor taps to send', { skip }, async () => {
+  await open('/work-with-me/?goal=sell');
+  await evaluate(FILL_STEP1);
+  for (let i = 0; i < 2; i++) await evaluate(`document.querySelector('.intake [data-next]').click()`);
+  const before = await evaluate('location.href');
+  await evaluate(`(() => { const f=document.querySelector('.intake'); f.sellAddress.value='1 Main St'; f.querySelector('[data-next]').click(); f.consent.checked=true; f.dataset.api=''; f.requestSubmit(); })()`);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(await evaluate('location.href'), before);
+  assert.match(await evaluate(`document.querySelector('[data-send-email]').href`), /^mailto:/);
+});

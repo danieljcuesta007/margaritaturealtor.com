@@ -1,12 +1,12 @@
 #!/bin/bash
 # Publishes a noindex preview of the current branch to GitHub Pages, in a
 # separate PUBLIC repo that contains only built pages (the source stays private).
-#   ./scripts/publish-preview.sh            -> https://<owner>.github.io/margaritacuesta-preview/
+#   ./scripts/publish-preview.sh            -> https://<owner>.github.io/margaritaturealtor-preview/
 # Needs: node, git, gh (logged in). Set PREVIEW_REPO=owner/name to use another repo.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # Guard first: this force-pushes, so only ever target a repo named *-preview.
-if [ -n "${PREVIEW_REPO:-}" ]; then REPO="$PREVIEW_REPO"; else REPO="$(gh api user -q .login)/margaritacuesta-preview"; fi
+if [ -n "${PREVIEW_REPO:-}" ]; then REPO="$PREVIEW_REPO"; else REPO="$(gh api user -q .login)/margaritaturealtor-preview"; fi
 NAME="${REPO#*/}"
 case "$NAME" in *-preview) ;; *) echo "Refusing: $REPO is not a *-preview repo" >&2; exit 1;; esac
 OWNER="${REPO%%/*}"

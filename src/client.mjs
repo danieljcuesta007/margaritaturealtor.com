@@ -236,7 +236,7 @@ if(form){
       if(!sent){
         var fb=doneEl.querySelector('[data-fallback]'); fb.hidden=false;
         fb.querySelector('[data-send-email]').href=mail; fb.querySelector('[data-send-wa]').href=wa;
-        location.href=mail;
+        // No automatic launch of the mail app: it surprised people (Daniel, 19 Oct 2026). They tap to send.
       }
     }
     var api=form.dataset.api;

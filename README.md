@@ -1,6 +1,6 @@
 # margaritaturealtor.com
 
-(Repo and folder keep the earlier name `margaritacuesta.com`; the site's domain is **margaritaturealtor.com**, matching her @margaritaturealtor handles. Not bought yet.)
+The domain is **margaritaturealtor.com**, matching her @margaritaturealtor handles (not bought yet). Repo: `danieljcuesta007/margaritaturealtor.com` (renamed from `margaritacuesta.com` on 19 Oct 2026; GitHub redirects the old URL).
 
 The website of **Margarita Cuesta**, bilingual (English/Spanish) real estate broker and
 REALTOR® with the Corrales Real Estate Team with The Insight Group in Raleigh, NC.
@@ -20,12 +20,13 @@ The welcome window is modelled on the W.O.W signup prompt: once per visit on the
 after 20 seconds of attention, 55% down the page or on exit intent; never while someone is
 typing; quiet for 7, 30, then 90 days after "Not now"; never again once they have the toolkit.
 
-**Preview:** https://danieljcuesta007.github.io/margaritacuesta-preview/ (not indexed).
+**Preview:** https://danieljcuesta007.github.io/margaritaturealtor-preview/ (not indexed).
 
 ## Requirements
 
 - Node 18 or newer (22+ for the browser tests, which also need Google Chrome and skip without it). No packages to install.
 - Python 3 (preinstalled on macOS) only for the local preview server.
+- Optional, only to regenerate photo sizes (`scripts/make-webp.sh`): `cwebp` (libwebp) and macOS `sips`. Without them the committed WebP files keep working, and a missing one falls back to the JPEG.
 - Only to regenerate the share image (`scripts/make-images.sh`): Google Chrome and macOS's
   built-in `sips`. On Linux, screenshot `scripts/og.html` (1200x630) and `scripts/icon.html`
   (180x180) by hand instead.
@@ -37,6 +38,7 @@ node src/build.mjs                    # build into dist/
 node --test                           # run the tests
 python3 -m http.server 8765 -d dist   # preview at http://localhost:8765
 ./scripts/make-images.sh              # regenerate the share card and touch icon
+./scripts/make-webp.sh                # right-sized WebP copies of the photos (after adding a photo)
 node scripts/make-guide.mjs           # regenerate the toolkit PDFs (needs Chrome)
 ./scripts/publish-preview.sh          # push a noindex preview to GitHub Pages
 ```
@@ -61,10 +63,21 @@ node scripts/make-guide.mjs           # regenerate the toolkit PDFs (needs Chrom
 
 ## Common changes
 
-- **New listing or open house:** add it to `data/listings.json` (photos in `assets/img/`). Past open houses hide themselves.
+- **New listing or open house:** add it to `data/listings.json` (photos in `assets/img/`), then run `./scripts/make-webp.sh`. Past open houses hide themselves.
 - **Booking links:** `links.booking` in `data/identity.json` maps each goal (discovery, buy, sell, lease, invest, showing) to a Calendly event; a single URL string also works and is used as the discovery call.
 - **New profile (Zillow, Google Business Profile...):** add it to `profiles`. It reaches `sameAs` and the footer.
 - **Wording:** edit `src/copy.mjs`, both languages. The parity test fails if one side gains or loses a field.
+
+## Measured (19 Oct 2026, mobile Lighthouse 12, median of 4, local gzip server)
+
+| Page | Perf | A11y | BP | SEO | LCP | First paint | Weight |
+|---|---|---|---|---|---|---|---|
+| `/` before | 87 | 96 | 100 | 100 | 3.96s | 2.73s | 824KB |
+| `/` after | 99 | 100 | 100 | 100 | 2.02s | 0.85s | 239KB |
+| `/es/` after | 100 | 100 | 100 | 100 | 0.87s | 0.87s | 239KB |
+
+axe-core (WCAG 2.2 AA + best practice): 0 violations on 13 page states at 390px and 1440px.
+No third-party requests: fonts (`assets/fonts/`, OFL) and GSAP (`assets/vendor/`) are self-hosted.
 
 ## Deploy
 

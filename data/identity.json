@@ -159,7 +159,9 @@
         "es": "Copropietaria"
       },
       "url": "https://danieljcuesta007.github.io/sequoiabuilders-preview/",
-      "$comment": "Preview URL until Sequoia has its own domain. Repo: ~/sequoiabuilders."
+      "type": "HomeAndConstructionBusiness",
+      "summary": "a family home builder in the Triangle",
+      "$comment": "Preview URL until Sequoia has its own domain. Repo: ~/sequoiabuilders. Its schema names Margarita by this site's #margarita @id."
     }
   ]
 }
