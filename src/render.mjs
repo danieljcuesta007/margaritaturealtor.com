@@ -164,33 +164,59 @@ function footer(ctx) {
   </div>
   <div class="wrap verse">
     <p>“${esc(c.footer.verse)}” <span>${esc(c.footer.verseRef)}</span></p>
-    <p class="fine">© <span data-year>2026</span> ${esc(identity.name)} · <a href="${u(other.paths[page])}" hreflang="${other.htmlLang}">${esc(c.otherLabel)}</a></p>
+    <p class="fine">© <span data-year>2026</span> ${esc(identity.name)} · <a href="${u(c.paths.privacy)}">${esc(c.footer.privacy)}</a> · <a href="${u(other.paths[page])}" hreflang="${other.htmlLang}">${esc(c.otherLabel)}</a></p>
   </div>
 </footer>`;
 }
 
+/** The toolkit cover, drawn in markup: used in the popup and the giveaway band. */
+function toolkitCover(c, cls) {
+  return `<div class="${cls}" aria-hidden="true"><span class="tk-kick">Raleigh · Durham</span><span class="tk-title">${esc(c.popup.cover)}</span><span class="tk-rule"></span><span class="tk-lines"><i></i><i></i><i></i><i></i><i></i></span><span class="tk-by">Margarita Cuesta</span></div>`;
+}
+
+/**
+ * The welcome window: a native <dialog> modelled on the W.O.W signup prompt
+ * (danielcuesta007.com SignupPrompt.astro). It asks once, at a good moment,
+ * and steps back for a while after a "not now". Timing lives in client.mjs.
+ * With api.subscribe set the email is saved by the Worker; without it the
+ * toolkit still opens and the visitor can send Margarita a one-tap note, and
+ * the fine print says exactly that.
+ */
 function popup(ctx) {
   const { c, other, u, identity } = ctx;
   const p = c.popup;
   const pdf = u('/' + ctx.guidePdf[c.lang]);
-  return `<dialog class="pop" id="guide" aria-labelledby="guide-title" data-api="${esc(identity.api.subscribe)}" data-lang="${c.lang}" data-pdf="${pdf}">
-  <button class="pop-x" type="button" data-close aria-label="${esc(p.close)}">${icon('close')}</button>
-  <div class="pop-art" aria-hidden="true"><span>10</span></div>
-  <div class="pop-body">
-    <p class="eyebrow">${esc(p.eyebrow)}</p>
-    <h2 id="guide-title">${esc(p.title)}</h2>
-    <p>${esc(p.body)}</p>
+  const api = identity.api.subscribe;
+  const note = `mailto:${identity.contact.email}?subject=${encodeURIComponent(p.noteSubject)}&body=${encodeURIComponent(p.noteBody)}`;
+  const wa = `${identity.contact.whatsapp}?text=${encodeURIComponent(p.noteBody)}`;
+  return `<dialog class="pop" id="guide" aria-labelledby="guide-title" data-api="${esc(api)}" data-lang="${c.lang}" data-pdf="${pdf}">
+  <div class="pop-card">
+    <button class="pop-x" type="button" data-close aria-label="${esc(p.close)}">${icon('close')}</button>
+    ${toolkitCover(c, 'tk tk-pop')}
+    <p class="pop-kick">${esc(p.eyebrow)}</p>
+    <h2 class="pop-title" id="guide-title" tabindex="-1">${esc(p.title)}</h2>
+    <p class="pop-blurb">${esc(p.body)}</p>
     <form class="pop-form">
       <label class="sr" for="g-name">${esc(p.name)}</label><input id="g-name" name="name" placeholder="${esc(p.name)}" autocomplete="given-name" required>
       <label class="sr" for="g-email">${esc(p.email)}</label><input id="g-email" name="email" type="email" placeholder="${esc(p.email)}" autocomplete="email" required>
-      <button class="btn btn-ink" type="submit">${esc(p.submit)}</button>
+      <input class="hp" name="mc_trap" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn btn-ink" type="submit" data-label="${esc(p.submit)}" data-sending="${esc(p.sending)}">${esc(p.submit)}</button>
     </form>
     <div class="pop-done" hidden>
       <p class="pop-thanks">${esc(p.thanks)}</p>
       <a class="btn btn-ink" href="${pdf}" download>${esc(p.download)}</a>
+      <p class="pop-status" data-saved hidden role="status">${esc(p.saved)}</p>
+      <div class="pop-note" data-note hidden>
+        <p><span data-failed hidden>${esc(p.failed)} </span>${esc(p.note)}</p>
+        <div class="pop-note-row"><a class="btn btn-ghost btn-sm" data-note-mail href="${esc(note)}">${icon('mail')}<span>${esc(p.noteEmail)}</span></a><a class="btn btn-ghost btn-sm" href="${esc(wa)}" rel="noopener">${icon('whatsapp')}<span>${esc(p.noteWa)}</span></a></div>
+      </div>
     </div>
-    <a class="pop-lang" href="${u(other.paths.home)}?guide=1" hreflang="${other.htmlLang}" lang="${other.htmlLang}">${esc(p.switchLang)}</a>
-    <p class="fine">${esc(p.privacy)}</p>
+    <p class="pop-fine">${esc(api ? p.privacy : p.privacyLocal)} <a href="${u(c.paths.privacy)}">${esc(p.privacyLink)}</a></p>
+    <div class="pop-actions">
+      <button type="button" class="pop-link" data-already>${esc(p.already)}</button><span aria-hidden="true">·</span>
+      <button type="button" class="pop-link" data-close>${esc(p.notNow)}</button><span aria-hidden="true">·</span>
+      <a class="pop-link" href="${u(other.paths.home)}?guide=1" hreflang="${other.htmlLang}" lang="${other.htmlLang}">${esc(p.switchLang)}</a>
+    </div>
   </div>
 </dialog>`;
 }
@@ -206,7 +232,7 @@ ${body}
 ${footer(ctx)}
 ${popup(ctx)}
 <a class="float-call" href="tel:${ctx.identity.contact.phoneE164}">${icon('phone')}<span>${esc(ctx.c.callShort)}</span></a>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+${pageName === 'home' ? '<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>' : ''}
 <script>${ctx.script}</script>
 </body>
 </html>
@@ -286,6 +312,8 @@ function listingCard(ctx, l) {
         <p class="kick">${esc(sold ? L.sold : L.active)}${l.mls ? ` · MLS #${esc(l.mls)}` : ''}</p>
         <h3>${esc(l.address)}</h3>
         <p class="loc">${esc(l.locality)}, ${esc(l.region)} ${esc(l.postalCode)}</p>
+        <p class="facts">${l.beds} ${esc(L.beds.toLowerCase())} · ${l.baths} ${esc(L.baths.toLowerCase())} · ${Number(l.sqft).toLocaleString('en-US')} ${esc(L.sqft.toLowerCase())}</p>
+        ${sold ? '' : `<a class="link front-book" href="${book}">${esc(L.bookShort)} ${icon('arrow')}</a>`}
         <div class="front-foot">
           ${l.price && !sold ? `<p class="price">${money(l.price)}</p>` : ''}
           <span class="hover-hint">${esc(L.flip)} ${icon('arrow')}</span>
@@ -372,7 +400,7 @@ ${journeys(ctx)}
       <h2 id="listings-h">${esc(c.listings.heading)}</h2>
       <p class="lede">${esc(c.listings.intro)}</p>
       <div class="cta-row">
-        <button class="btn btn-ink" type="button" data-open-guide>${esc(c.listings.alerts)} ${icon('arrow')}</button>
+        <a class="btn btn-ink" href="${work}?goal=buy">${esc(c.listings.alerts)} ${icon('arrow')}</a>
         <a class="btn btn-ghost" href="${identity.links.searchHomes}" rel="noopener">${esc(c.listings.search)}</a>
       </div>
     </div>
@@ -440,11 +468,12 @@ ${sequoiaBand(ctx)}
 
 <section class="giveaway" aria-labelledby="give-h">
   <div class="wrap give-inner">
-    <div class="give-art" aria-hidden="true"><span>10</span></div>
+    ${toolkitCover(c, 'tk tk-give')}
     <div>
       <p class="eyebrow">${esc(c.giveaway.eyebrow)}</p>
       <h2 id="give-h">${esc(c.giveaway.heading)}</h2>
       <p>${esc(c.giveaway.body)}</p>
+      <ol class="give-list">${c.giveaway.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
       <button class="btn btn-ink" type="button" data-open-guide>${esc(c.giveaway.cta)} ${icon('arrow')}</button>
     </div>
   </div>
@@ -557,15 +586,16 @@ function workBody(ctx) {
         <label class="consent"><input type="checkbox" name="consent" required> <span>${esc(F.consent)}</span></label>
       </fieldset>
 
+      <input class="hp" name="mc_trap" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="form-nav">
         <button class="btn btn-ghost" type="button" data-back hidden>${esc(W.back)}</button>
         <button class="btn btn-ink" type="button" data-next>${esc(W.next)} ${icon('arrow')}</button>
-        <button class="btn btn-ink" type="submit" data-submit hidden>${esc(W.submit)} ${icon('arrow')}</button>
+        <button class="btn btn-ink" type="submit" data-submit hidden data-sending="${esc(W.sending)}">${esc(W.submit)} ${icon('arrow')}</button>
       </div>
 
       <div class="done" hidden tabindex="-1">
-        <h2>${esc(W.doneTitle)}</h2>
-        <p>${esc(W.doneBody)}</p>
+        <h2 data-done-title data-unsent="${esc(W.doneTitleUnsent)}">${esc(W.doneTitle)}</h2>
+        <p data-done-body data-unsent="${esc(W.doneBodyUnsent)}">${esc(W.doneBody)}</p>
         <a class="btn btn-tiff" data-booking-link hidden href="#" rel="noopener">${esc(W.bookingCta)} ${icon('arrow')}</a>
         <div data-fallback hidden>
           <p class="fine">${esc(W.doneEmail)}</p>
@@ -576,6 +606,21 @@ function workBody(ctx) {
         </div>
       </div>
     </form>
+  </div>
+</section>`;
+}
+
+/* ---------- privacy ---------- */
+
+function privacyBody(ctx) {
+  const { identity, c } = ctx;
+  const P = c.privacy;
+  return `<section class="legal">
+  <div class="wrap legal-inner">
+    <p class="eyebrow">${esc(P.eyebrow)}</p>
+    <h1>${esc(P.heading)}</h1>
+    <p class="fine">${esc(P.updated)}</p>
+    ${P.sections.map(([h, b]) => `<h2>${esc(h)}</h2>\n    <p>${esc(fill(b, identity))}</p>`).join('\n    ')}
   </div>
 </section>`;
 }
@@ -599,5 +644,10 @@ export function renderLanguage({ identity, listings, copy, all, css, script, bas
     description: copy.work.metaDescription,
     graph: buildGraph(identity, copy, { page: 'work' }),
   });
-  return { [copy.paths.home]: home, [copy.paths.work]: work };
+  const privacy = page(ctx, 'privacy', privacyBody(ctx), {
+    title: copy.privacy.title,
+    description: copy.privacy.metaDescription,
+    graph: buildGraph(identity, copy, { page: 'privacy' }),
+  });
+  return { [copy.paths.home]: home, [copy.paths.work]: work, [copy.paths.privacy]: privacy };
 }

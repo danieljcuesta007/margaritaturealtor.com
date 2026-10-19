@@ -1,0 +1,28 @@
+# Copy to worker/wrangler.toml (gitignored) and fill in the ids from Margarita's
+# Cloudflare account. Secrets are never written here:
+#   npx wrangler secret put RESEND_API_KEY   (optional: email notifications)
+name = "margarita-leads"
+main = "src/index.mjs"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Pages that may post to the API (comma separated, no trailing slash).
+ALLOWED_ORIGINS = "https://www.margaritaturealtor.com,https://margaritaturealtor.com"
+# Where new-lead notifications go, and who they come from (a verified Resend domain).
+NOTIFY_TO = "margarita@corralesre.com"
+NOTIFY_FROM = "Website <hola@margaritaturealtor.com>"
+
+# Per-IP limit on form posts (Workers rate limiting binding).
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
+[[d1_databases]]
+binding = "DB"
+database_name = "margarita-leads"
+database_id = "REPLACE_WITH_D1_ID"
+
+[[routes]]
+pattern = "api.margaritaturealtor.com"
+custom_domain = true

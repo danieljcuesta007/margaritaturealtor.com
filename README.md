@@ -10,9 +10,15 @@ call, WhatsApp, email, intake and booking goes to her, with the Corrales team an
 Group credited as where her license is held.
 
 Pages: `/` and `/es/` (home), `/work-with-me/` and `/es/trabajar-conmigo/` (four-step intake
-that hands off to her calendar). Also: current listings as flip cards, the next open house in
-a bar across the top, a free bilingual buyer's guide behind a pop-up, and the
+that hands off to her calendar), `/privacy/` and `/es/privacidad/`. Also: current listings as
+flip cards, the next open house in a bar across the top, a welcome window offering the free
+bilingual **Home Buyer's Toolkit** (7-page PDF: the 10 costly mistakes, cash-to-close and
+monthly cost worksheets, a home-tour scorecard, offer-to-keys steps), and the
 "where are you headed" homes animation.
+
+The welcome window is modelled on the W.O.W signup prompt: once per visit on the home page,
+after 20 seconds of attention, 55% down the page or on exit intent; never while someone is
+typing; quiet for 7, 30, then 90 days after "Not now"; never again once they have the toolkit.
 
 **Preview:** https://danieljcuesta007.github.io/margaritacuesta-preview/ (not indexed).
 
@@ -31,7 +37,7 @@ node src/build.mjs                    # build into dist/
 node --test                           # run the tests
 python3 -m http.server 8765 -d dist   # preview at http://localhost:8765
 ./scripts/make-images.sh              # regenerate the share card and touch icon
-node scripts/make-guide.mjs           # regenerate the free guide PDFs (needs Chrome)
+node scripts/make-guide.mjs           # regenerate the toolkit PDFs (needs Chrome)
 ./scripts/publish-preview.sh          # push a noindex preview to GitHub Pages
 ```
 
@@ -44,11 +50,12 @@ node scripts/make-guide.mjs           # regenerate the free guide PDFs (needs Ch
 | `data/identity.json` | Every fact about her: name, phone, license, team, profiles, awards, sales. Change facts here only. |
 | `data/listings.json` | Her current listings and open houses. **The file she edits most.** |
 | `src/copy.mjs` | Every visible sentence, English and Spanish side by side. |
-| `src/guide.mjs` | The free guide's text, both languages. |
+| `src/guide.mjs` | The free toolkit's text, both languages. |
 | `src/schema.mjs` | The JSON-LD graph: one Person node, referenced by `@id` everywhere. |
-| `src/render.mjs`, `src/styles.css`, `src/client.mjs` | Markup, styles (light and dark), and the little JavaScript there is. |
-| `src/build.mjs` | Writes `dist/`: both pages, sitemap with hreflang, robots.txt, llms.txt, 404, Cloudflare `_headers`. |
+| `src/render.mjs`, `src/styles.css`, `src/client.mjs` | Markup, styles (light only, by request), and the little JavaScript there is. |
+| `src/build.mjs` | Writes `dist/`: every page, sitemap with hreflang, robots.txt, llms.txt, 404, Cloudflare `_headers`. |
 | `test/` | `node:test` suite: compliance lines, NAP consistency, one entity, hreflang, asset links, EN/ES parity. |
+| `worker/` | The lead backend (Cloudflare Worker + D1): saves toolkit sign-ups and intakes, emails Margarita. Built and tested, **not deployed**. |
 | `docs/LEAD-SYSTEM.md` | Backend design for capturing leads and the 24-48h follow-up email, with the open decisions. |
 | `docs/ENTITY.md` | The off-site plan: what Instagram, LinkedIn, TikTok, Google Business Profile and the team site should say. |
 
@@ -63,6 +70,25 @@ node scripts/make-guide.mjs           # regenerate the free guide PDFs (needs Ch
 
 Cloudflare Pages, connected to this repo: build command `node src/build.mjs`, output
 directory `dist`, production branch `main`. Nothing secret is needed.
+
+## Turning on lead capture
+
+Until `api.leads` / `api.subscribe` in `data/identity.json` are set, nothing is stored: the
+intake hands its answers to email/WhatsApp and the toolkit window offers a one-tap note to
+Margarita, and the fine print says so. To switch it on, in **her** Cloudflare account:
+
+```sh
+cp worker/wrangler.example.toml worker/wrangler.toml      # fill in the D1 id; gitignored
+npx wrangler d1 create margarita-leads
+npx wrangler d1 execute margarita-leads --remote --file=worker/schema.sql
+npx wrangler secret put RESEND_API_KEY --config worker/wrangler.toml   # optional: email alerts
+npx wrangler deploy --config worker/wrangler.toml
+```
+
+Then set `api.subscribe` to `https://api.margaritaturealtor.com/api/subscribe` and
+`api.leads` to `.../api/lead`, rebuild, and send one real test of each form. Without a Resend
+key leads are still saved; read them with `npx wrangler d1 execute margarita-leads --remote
+--command "SELECT * FROM leads ORDER BY created_at DESC"`.
 
 ## Compliance
 

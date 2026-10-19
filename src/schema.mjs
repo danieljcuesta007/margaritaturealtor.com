@@ -98,14 +98,14 @@ export function buildGraph(identity, copy, { page = 'home' } = {}) {
   };
 
   const webPage = {
-    '@type': page === 'work' ? ['WebPage', 'ContactPage'] : ['WebPage', 'ProfilePage'],
+    '@type': page === 'work' ? ['WebPage', 'ContactPage'] : page === 'home' ? ['WebPage', 'ProfilePage'] : 'WebPage',
     '@id': `${pageUrl}#webpage`,
     url: pageUrl,
-    name: page === 'work' ? copy.work.title : copy.title,
+    name: page === 'home' ? copy.title : copy[page].title,
     inLanguage: copy.htmlLang,
     isPartOf: { '@id': id.website },
     about: { '@id': id.person },
-    mainEntity: { '@id': id.person },
+    ...(page === 'privacy' ? {} : { mainEntity: { '@id': id.person } }),
   };
 
   return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, webPage] };

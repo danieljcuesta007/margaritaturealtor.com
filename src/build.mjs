@@ -16,7 +16,7 @@ import * as client from './client.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-export const GUIDE_PDF = { en: 'assets/guides/before-you-buy-triangle.pdf', es: 'assets/guides/antes-de-comprar-triangulo.pdf' };
+export const GUIDE_PDF = { en: 'assets/guides/triangle-home-buyer-toolkit.pdf', es: 'assets/guides/kit-del-comprador-triangulo.pdf' };
 export const JOURNEY_IMAGES = ['assets/img/listing-1036-mailwood-1.jpg', 'assets/img/listing-1036-mailwood-2.jpg', 'assets/img/sold-304-spring-st-kitchen.jpg'];
 
 export function loadIdentity(root = ROOT) {
