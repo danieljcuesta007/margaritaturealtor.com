@@ -27,12 +27,14 @@ var y=d.querySelector('[data-year]'); if(y) y.textContent=new Date().getFullYear
 // Hide open-house announcements once they are over (the page may be cached).
 d.querySelectorAll('[data-ends]').forEach(function(el){ if(new Date(el.dataset.ends)<new Date()) el.remove(); });
 
-// ---- Listing flip cards: hover flips on mouse devices, the button flips anywhere.
-d.querySelectorAll('[data-flip]').forEach(function(card){
-  card.querySelectorAll('.flip-btn').forEach(function(b){
-    b.addEventListener('click',function(){
-      var on=!card.classList.contains('is-flipped'); card.classList.toggle('is-flipped',on);
-      card.querySelectorAll('.flip-btn').forEach(function(x){x.setAttribute('aria-expanded',on)});
+// ---- Listing galleries: a thumbnail swaps the large photo.
+d.querySelectorAll('[data-gallery]').forEach(function(g){
+  var main=g.querySelector('[data-main]'), pic=main&&main.parentNode.tagName==='PICTURE'?main.parentNode:null;
+  g.querySelectorAll('.thumb').forEach(function(t){
+    t.addEventListener('click',function(){
+      if(pic){ var src=pic.querySelector('source'); if(src) src.remove(); pic=null; }
+      main.removeAttribute('srcset'); main.src=t.dataset.src; main.alt=t.dataset.alt;
+      g.querySelectorAll('.thumb').forEach(function(x){ var on=x===t; x.classList.toggle('is-on',on); x.setAttribute('aria-pressed',on); });
     });
   });
 });
@@ -159,6 +161,8 @@ if(form){
   if(booking){ form.querySelectorAll('[data-no-booking]').forEach(function(x){x.hidden=true}); form.querySelector('[data-booking-only]').hidden=false; }
   else form.querySelectorAll('[data-req-nobooking]').forEach(function(i){i.required=true});
   var g=q.get('goal'); [].forEach.call(form.querySelectorAll('input[name=goal]'),function(r){ if(r.value===g) r.checked=true; });
+  // ?area=Cary (from an Around the Triangle card) starts the areas answer for them.
+  var area=q.get('area'); if(area && form.areas && !form.areas.value) form.areas.value=area.slice(0,60);
   var lid=q.get('listing'), L=listings.filter(function(x){return x.id===lid})[0];
   if(L){ var chip=form.querySelector('.listing-chip'); chip.hidden=false; chip.querySelector('[data-listing-name]').textContent=L.name; chip.querySelector('input').value=L.name; }
   var today=new Date(); today.setMinutes(today.getMinutes()-today.getTimezoneOffset());

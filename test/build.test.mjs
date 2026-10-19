@@ -291,11 +291,16 @@ test('"Get new listings first" starts a buyer request instead of opening the gui
   }
 });
 
-test('listing cards show beds, baths, size and a showing link without flipping', () => {
-  const front = pages['/'].match(/<div class="face front">[\s\S]*?<div class="face back">/)[0];
+test('the listing feature shows every fact and the showing button with nothing hidden behind a flip', () => {
+  const html = pages['/'];
+  const f = html.match(/<article class="feature[\s\S]*?<\/article>/)[0];
   const l = listings.find((x) => x.status === 'active');
-  assert.match(front, new RegExp(`${l.beds} beds · ${l.baths} baths`));
-  assert.match(front, /class="link front-book" href="\/work-with-me\/\?goal=buy&amp;listing=/);
+  assert.match(f, new RegExp(`<strong>${l.beds}</strong> beds`));
+  assert.match(f, new RegExp(`<strong>${l.baths}</strong> baths`));
+  assert.ok(f.includes(l.highlights.en));
+  assert.match(f, /class="btn btn-ink" href="\/work-with-me\/\?goal=buy&amp;listing=/);
+  assert.equal((f.match(/class="thumb[ "]/g) || []).length, l.photos.length);
+  assert.doesNotMatch(html, /data-flip|flip-btn/);
 });
 
 test('fine print meets 4.5:1 contrast on every ground it sits on', () => {
@@ -386,4 +391,53 @@ test('the committed WebP sets all match their JPEGs, and the hero offers 1200w f
   const idx = webpIndex(ROOT);
   assert.deepEqual(idx['margarita-cuesta-portrait'], [480, 720, 960, 1200]);
   for (const l of listings) assert.ok(idx[l.photos[0].replace(/^.*\/|\.jpg$/g, '')], l.id);
+});
+
+// Step 7 (design, 19 Oct 2026)
+test('Around the Triangle: one card per area, linking to an intake that names the area, and nothing Fair Housing protects', () => {
+  const areas = JSON.parse(readFileSync(join(ROOT, 'data', 'areas.json'), 'utf8')).areas;
+  for (const lang of ['en', 'es']) {
+    const sec = pages[COPY[lang].paths.home].match(/<section id="areas"[\s\S]*?<\/section>/)[0];
+    assert.equal((sec.match(/<article class="area">/g) || []).length, areas.length);
+    for (const a of areas) assert.ok(sec.includes(`?goal=buy&amp;area=${encodeURIComponent(a.name)}`), a.id);
+  }
+  const words = JSON.stringify(areas).toLowerCase();
+  for (const w of ['school', 'safe', 'crime', 'family-friendly', 'families', 'church', 'diverse', 'ethnic', 'hispanic', 'latino', 'young', 'retire']) assert.ok(!words.includes(w), `areas mention "${w}"`);
+  assert.ok(readFileSync(join(out, 'llms.txt'), 'utf8').includes('## Around the Triangle'));
+});
+
+test('the timeline has the same six steps in both languages', () => {
+  for (const lang of ['en', 'es']) {
+    const sec = pages[COPY[lang].paths.home].match(/<section id="process"[\s\S]*?<\/section>/)[0];
+    assert.equal((sec.match(/<li>/g) || []).length, 6);
+  }
+});
+
+test('the hello video shows a "coming soon" frame until a video is set, then plays it', () => {
+  assert.match(pages['/'], /<figure class="hello is-soon">[\s\S]*?Video coming soon/);
+  const withVideo = renderLanguage({ identity: { ...identity, video: { en: 'assets/video/hello.mp4', es: '' } }, listings, copy: COPY.es, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {} })['/es/'];
+  assert.match(withVideo, /<video controls preload="none"[^>]*src="\/assets\/video\/hello\.mp4"/);
+});
+
+test('Spanish pages show the reviews translated, marked as translations, with the original one tap away', () => {
+  const sec = pages['/es/'].match(/<section id="reviews"[\s\S]*?<\/section>/)[0];
+  for (const t of identity.testimonials) {
+    assert.ok(t.es, `${t.name} has no translation`);
+    assert.ok(sec.includes(esc(t.es)), t.name);
+    assert.ok(sec.includes(esc(t.text)), `${t.name} original kept`);
+  }
+  assert.equal((sec.match(/Traducido del inglés/g) || []).length, identity.testimonials.length);
+  assert.match(sec, /<blockquote lang="es">/);
+  assert.doesNotMatch(pages['/'].match(/<section id="reviews"[\s\S]*?<\/section>/)[0], /quote-orig/, 'English page shows the originals only');
+});
+
+test('her mark is the tab icon and sits beside her name in the header and footer', () => {
+  const svg = readFileSync(join(ROOT, 'assets', 'favicon.svg'), 'utf8');
+  assert.equal(svg, readFileSync(join(ROOT, 'assets', 'mark.svg'), 'utf8'));
+  assert.match(pages['/'], /<a class="brand"[^>]*>\s*<svg class="brand-mark"/);
+  assert.match(pages['/'], /<p class="foot-name"><svg class="foot-mark"/);
+});
+
+test('the hero carries its proof line in both languages', () => {
+  for (const lang of ['en', 'es']) for (const x of COPY[lang].hero.proof) assert.ok(pages[COPY[lang].paths.home].includes(`<li>${esc(x)}</li>`), x);
 });
