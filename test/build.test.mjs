@@ -1,14 +1,15 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, loadIdentity, loadListings, llmsTxt, assertSafeOutDir, parseArgs, GUIDE_PDF } from '../src/build.mjs';
+import { build, loadIdentity, loadListings, llmsTxt, assertSafeOutDir, parseArgs, GUIDE_PDF, webpIndex } from '../src/build.mjs';
 import { spawnSync } from 'node:child_process';
 import { COPY } from '../src/copy.mjs';
 import { GUIDE } from '../src/guide.mjs';
-import { nextOpenHouse } from '../src/render.mjs';
+import { nextOpenHouse, esc, renderLanguage } from '../src/render.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const identity = loadIdentity(ROOT);
@@ -26,8 +27,8 @@ const visibleText = (html) =>
   html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 
-test('builds home and work-with-me in English and Spanish', () => {
-  assert.deepEqual(Object.keys(pages).sort(), ['/', '/es/', '/es/trabajar-conmigo/', '/work-with-me/']);
+test('builds home, work-with-me and privacy in English and Spanish', () => {
+  assert.deepEqual(Object.keys(pages).sort(), ['/', '/es/', '/es/privacidad/', '/es/trabajar-conmigo/', '/privacy/', '/work-with-me/']);
   assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /<html lang="en-US">/);
   assert.match(readFileSync(join(out, 'es', 'trabajar-conmigo', 'index.html'), 'utf8'), /<html lang="es-US">/);
 });
@@ -101,7 +102,7 @@ test('the next open house is announced, and disappears once it is over', () => {
 });
 
 test('build CLI accepts --base=/x and --base /x, and rejects anything else', () => {
-  assert.deepEqual(parseArgs(['out', '--preview', '--base', '/margaritacuesta-preview/']), { outDir: 'out', base: '/margaritacuesta-preview', preview: true });
+  assert.deepEqual(parseArgs(['out', '--preview', '--base', '/margaritaturealtor-preview/']), { outDir: 'out', base: '/margaritaturealtor-preview', preview: true });
   assert.deepEqual(parseArgs(['--base=/x']), { outDir: undefined, base: '/x', preview: false });
   assert.throws(() => parseArgs(['--base']), /--base needs/);
   assert.throws(() => parseArgs(['--base', 'no-slash']), /--base needs/);
@@ -109,14 +110,14 @@ test('build CLI accepts --base=/x and --base /x, and rejects anything else', () 
 });
 
 test('publish-preview.sh refuses any repo not named *-preview', () => {
-  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritacuesta.com' }, encoding: 'utf8' });
+  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritaturealtor.com' }, encoding: 'utf8' });
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /Refusing/);
 });
 
-test('hreflang alternates are reciprocal and the sitemap lists all four pages', () => {
+test('hreflang alternates are reciprocal and the sitemap lists every page', () => {
   const site = identity.site;
-  for (const key of ['home', 'work']) {
+  for (const key of ['home', 'work', 'privacy']) {
     for (const c of Object.values(COPY)) {
       const html = pages[c.paths[key]];
       for (const x of Object.values(COPY)) assert.ok(html.includes(`hreflang="${x.htmlLang}" href="${site}${x.paths[key]}"`), `${c.paths[key]} -> ${x.paths[key]}`);
@@ -140,10 +141,10 @@ test('every local file a page references exists in the build', () => {
 
 test('a GitHub Pages preview prefixes every internal link and is never indexed', () => {
   const dir = tmp('mc-preview-');
-  const { pages: p } = build({ outDir: dir, root: ROOT, identity, listings, now: NOW, base: '/margaritacuesta-preview', preview: true });
+  const { pages: p } = build({ outDir: dir, root: ROOT, identity, listings, now: NOW, base: '/margaritaturealtor-preview', preview: true });
   for (const html of Object.values(p)) {
     assert.match(html, /<meta name="robots" content="noindex, nofollow">/);
-    for (const [, ref] of html.matchAll(/(?:src|href|data-pdf)="(\/[^"]*)"/g)) assert.ok(ref.startsWith('/margaritacuesta-preview/'), ref);
+    for (const [, ref] of html.matchAll(/(?:src|href|data-pdf)="(\/[^"]*)"/g)) assert.ok(ref.startsWith('/margaritaturealtor-preview/'), ref);
   }
   assert.match(readFileSync(join(dir, 'robots.txt'), 'utf8'), /Disallow: \//);
   assert.doesNotMatch(pages['/'], /noindex/);
@@ -174,6 +175,16 @@ test('English and Spanish copy have the same shape', () => {
   assert.deepEqual(shape(GUIDE.es), shape(GUIDE.en));
 });
 
+/** Width from a WebP header: lossy (VP8), lossless (VP8L) or extended (VP8X). */
+function webpWidth(file) {
+  const b = readFileSync(file);
+  const kind = b.toString('ascii', 12, 16);
+  if (kind === 'VP8 ') return b.readUInt16LE(26) & 0x3fff;
+  if (kind === 'VP8L') return 1 + (((b[22] & 0x3f) << 8) | b[21]);
+  if (kind === 'VP8X') return 1 + b.readUIntLE(24, 3);
+  throw new Error(`not a WebP: ${file}`);
+}
+
 /** Width of a JPEG from its SOF marker (stdlib only). */
 function jpegWidth(file) {
   const b = readFileSync(file);
@@ -191,7 +202,8 @@ test('every srcset width descriptor matches the real image width', () => {
     for (const [, set] of html.matchAll(/srcset="([^"]+)"/g)) {
       for (const cand of set.split(',')) {
         const [src, w] = cand.trim().split(/\s+/);
-        assert.equal(`${jpegWidth(join(out, src))}w`, w, `${src} is not ${w}`);
+        const f = join(out, src);
+        assert.equal(`${src.endsWith('.webp') ? webpWidth(f) : jpegWidth(f)}w`, w, `${src} is not ${w}`);
       }
     }
   }
@@ -244,4 +256,200 @@ test('booking config notes ($-keys) never reach the page, and a plain string sti
   assert.doesNotMatch(pages['/work-with-me/'], /created 12 Oct/);
   const { bookingMap } = await import('../src/render.mjs');
   assert.deepEqual(bookingMap({ links: { booking: 'https://x/y' } }), { discovery: 'https://x/y' });
+});
+
+// Audit 14 Oct 2026, P0: the popup promised "unsubscribe anytime" with nothing to subscribe to.
+test('the welcome window only promises email when there is a backend to send it', () => {
+  const html = pages['/'];
+  assert.ok(!identity.api.subscribe || html.includes(COPY.en.popup.privacy));
+  const offline = build({ outDir: tmp('mc-noapi-'), root: ROOT, identity: { ...identity, api: { leads: '', subscribe: '' } }, listings, now: NOW, lastmod: new Date('2026-10-12') }).pages;
+  const online = build({ outDir: tmp('mc-api-'), root: ROOT, identity: { ...identity, api: { leads: 'https://api.x/api/lead', subscribe: 'https://api.x/api/subscribe' } }, listings, now: NOW, lastmod: new Date('2026-10-12') }).pages;
+  for (const [pages, want, not] of [[offline, 'privacyLocal', 'privacy'], [online, 'privacy', 'privacyLocal']]) {
+    for (const lang of ['en', 'es']) {
+      const v = visibleText(pages[COPY[lang].paths.home]);
+      assert.ok(v.includes(COPY[lang].popup[want]), `${lang} ${want}`);
+      assert.ok(!v.includes(COPY[lang].popup[not]), `${lang} not ${not}`);
+    }
+  }
+  assert.match(online['/'], /data-api="https:\/\/api\.x\/api\/subscribe"/);
+});
+
+test('every page links the privacy notice in its own language', () => {
+  for (const [path, html] of Object.entries(pages)) {
+    const lang = path.startsWith('/es/') ? 'es' : 'en';
+    assert.ok(html.includes(`href="${COPY[lang].paths.privacy}"`), path);
+  }
+  assert.match(visibleText(pages['/privacy/']), new RegExp(identity.contact.phoneDisplay.replace(/[()]/g, '\\$&')));
+});
+
+test('"Get new listings first" starts a buyer request instead of opening the guide', () => {
+  for (const lang of ['en', 'es']) {
+    const html = pages[COPY[lang].paths.home];
+    const a = html.match(new RegExp(`<a[^>]*>${COPY[lang].listings.alerts}`));
+    assert.ok(a, lang);
+    assert.match(a[0], new RegExp(`href="${COPY[lang].paths.work}\\?goal=buy"`));
+  }
+});
+
+test('the listing feature shows every fact and the showing button with nothing hidden behind a flip', () => {
+  const html = pages['/'];
+  const f = html.match(/<article class="feature[\s\S]*?<\/article>/)[0];
+  const l = listings.find((x) => x.status === 'active');
+  assert.match(f, new RegExp(`<strong>${l.beds}</strong> beds`));
+  assert.match(f, new RegExp(`<strong>${l.baths}</strong> baths`));
+  assert.ok(f.includes(l.highlights.en));
+  assert.match(f, /class="btn btn-ink" href="\/work-with-me\/\?goal=buy&amp;listing=/);
+  assert.equal((f.match(/class="thumb[ "]/g) || []).length, l.photos.length);
+  assert.doesNotMatch(html, /data-flip|flip-btn/);
+});
+
+test('fine print meets 4.5:1 contrast on every ground it sits on', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  const v = (n) => css.match(new RegExp(`--${n}: (#[0-9A-Fa-f]{6})`))[1];
+  const lum = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)).reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  for (const g of ['paper', 'paper-2', 'tiff-wash']) assert.ok(ratio(v('ink-3'), v(g)) >= 4.5, `ink-3 on ${g}`);
+});
+
+test('GSAP loads only on the page that animates with it', () => {
+  for (const [path, html] of Object.entries(pages)) assert.equal(/gsap-[\d.]+\.min\.js/.test(html), path === '/' || path === '/es/', path);
+});
+
+// Step 6 (Addisuna-grade audit, 19 Oct 2026): mobile speed, accessibility, AI search.
+test('pages load nothing from third parties: fonts and GSAP are self-hosted', () => {
+  for (const [path, html] of Object.entries(pages)) {
+    const markup = html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '');
+    const loading = markup.match(/<(?:script|img|source)[^>]*>|<link(?![^>]*rel="(?:canonical|alternate)")[^>]*>/g) || [];
+    for (const tag of loading) assert.doesNotMatch(tag, /(?:src|href|srcset)="https?:\/\//, `${path}: ${tag}`);
+    assert.doesNotMatch(markup, /fonts\.googleapis|fonts\.gstatic|cdnjs/, path);
+  }
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  for (const [, f] of css.matchAll(/url\(\/(assets\/fonts\/[^)]+)\)/g)) assert.ok(existsSync(join(ROOT, f)), f);
+});
+
+test('the hero photo is served as WebP and preloaded on the home page', () => {
+  for (const lang of ['en', 'es']) {
+    const html = pages[COPY[lang].paths.home];
+    assert.match(html, /<link rel="preload" as="image" imagesrcset="[^"]*portrait-480\.webp 480w/);
+    assert.match(html, /<picture><source type="image\/webp" srcset="[^"]*portrait-480\.webp[^>]*><img[^>]*fetchpriority="high"/);
+  }
+});
+
+test('without WebP files the pages fall back to plain JPEG images', () => {
+  assert.deepEqual(webpIndex(tmp('mc-nowebp-')), {});
+  const html = renderLanguage({ identity, listings, copy: COPY.en, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {} })['/'];
+  assert.doesNotMatch(html, /<picture>|\.webp|image\/webp/);
+  assert.match(html, /<img src="\/assets\/img\/margarita-cuesta-portrait-1200\.jpg"/);
+});
+
+test('the FAQ schema repeats the questions on the page word for word, in each language', () => {
+  for (const lang of ['en', 'es']) {
+    const html = pages[COPY[lang].paths.home];
+    const faq = graphOf(html).find((n) => n['@type'] === 'FAQPage');
+    assert.ok(faq, lang);
+    // Look only at the printed FAQ section, never at the JSON-LD the questions came from.
+    const section = html.match(/<section id="faq"[\s\S]*?<\/section>/)[0];
+    assert.equal(faq.mainEntity.length, COPY[lang].faq.items.length);
+    for (const q of faq.mainEntity) {
+      assert.ok(section.includes(`<summary>${esc(q.name)}</summary>`), q.name);
+      assert.ok(section.includes(`<p>${esc(q.acceptedAnswer.text)}</p>`), q.name);
+    }
+  }
+  assert.ok(!graphOf(pages['/work-with-me/']).some((n) => n['@type'] === 'FAQPage'), 'FAQ schema only where the FAQ is');
+});
+
+test('her Person node names Sequoia Builders, the business she co-owns', () => {
+  const person = graphOf(pages['/']).find((n) => n['@type'] === 'Person');
+  assert.equal(person.affiliation[0].name, identity.ventures[0].name);
+});
+
+test('llms.txt carries the FAQ, the toolkit and the privacy notice', () => {
+  const t = readFileSync(join(out, 'llms.txt'), 'utf8');
+  for (const [q] of COPY.en.faq.items) assert.ok(t.includes(`### ${q}`), q);
+  assert.ok(t.includes(GUIDE_PDF.en) && t.includes(COPY.en.paths.privacy));
+});
+
+test('every piece of content sits inside a landmark (open-house bar, call button)', () => {
+  const html = pages['/'];
+  assert.match(html, /<aside class="announce"[^>]*aria-label=/);
+  assert.match(html, /<a class="float-call"[^>]*>[\s\S]*?<\/a>\s*<\/footer>/);
+  assert.doesNotMatch(pages['/work-with-me/'], /<aside class="work-side"/);
+});
+
+test('a WebP set whose JPEG has changed is skipped, so a replaced photo never shows the old one', () => {
+  const root = tmp('mc-stale-');
+  mkdirSync(join(root, 'assets', 'img', 'w'), { recursive: true });
+  writeFileSync(join(root, 'assets', 'img', 'a.jpg'), 'new photo');
+  writeFileSync(join(root, 'assets', 'img', 'b.jpg'), 'same photo');
+  for (const n of ['a-640', 'b-640']) writeFileSync(join(root, 'assets', 'img', 'w', `${n}.webp`), '');
+  const sha = (t) => createHash('sha256').update(t).digest('hex');
+  writeFileSync(join(root, 'assets', 'img', 'w', 'sources.json'), JSON.stringify({ a: { file: 'a.jpg', sha256: sha('old photo') }, b: { file: 'b.jpg', sha256: sha('same photo') } }));
+  assert.deepEqual(webpIndex(root), { b: [640] });
+});
+
+test('the committed WebP sets all match their JPEGs, and the hero offers 1200w for sharp phones', () => {
+  const idx = webpIndex(ROOT);
+  assert.deepEqual(idx['margarita-cuesta-portrait'], [480, 720, 960, 1200]);
+  for (const l of listings) assert.ok(idx[l.photos[0].replace(/^.*\/|\.jpg$/g, '')], l.id);
+});
+
+// Step 7 (design, 19 Oct 2026)
+test('Around the Triangle: one card per area, linking to an intake that names the area, and nothing Fair Housing protects', () => {
+  const areas = JSON.parse(readFileSync(join(ROOT, 'data', 'areas.json'), 'utf8')).areas;
+  for (const lang of ['en', 'es']) {
+    const sec = pages[COPY[lang].paths.home].match(/<section id="areas"[\s\S]*?<\/section>/)[0];
+    assert.equal((sec.match(/<article class="area">/g) || []).length, areas.length);
+    for (const a of areas) assert.ok(sec.includes(`?goal=buy&amp;area=${encodeURIComponent(a.name)}`), a.id);
+  }
+  const words = JSON.stringify(areas).toLowerCase();
+  for (const w of ['school', 'safe', 'crime', 'family-friendly', 'families', 'church', 'diverse', 'ethnic', 'hispanic', 'latino', 'young', 'retire']) assert.ok(!words.includes(w), `areas mention "${w}"`);
+  assert.ok(readFileSync(join(out, 'llms.txt'), 'utf8').includes('## Around the Triangle'));
+});
+
+test('the timeline has the same six steps in both languages', () => {
+  for (const lang of ['en', 'es']) {
+    const sec = pages[COPY[lang].paths.home].match(/<section id="process"[\s\S]*?<\/section>/)[0];
+    assert.equal((sec.match(/<li>/g) || []).length, 6);
+  }
+});
+
+test('the hello video shows a "coming soon" frame until a video is set, then plays it', () => {
+  assert.match(pages['/'], /<figure class="hello is-soon">[\s\S]*?Video coming soon/);
+  const withVideo = renderLanguage({ identity: { ...identity, video: { en: 'assets/video/hello.mp4', es: '' } }, listings, copy: COPY.es, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {} })['/es/'];
+  assert.match(withVideo, /<video controls preload="none"[^>]*src="\/assets\/video\/hello\.mp4"/);
+});
+
+test('Spanish pages show the reviews translated, marked as translations, with the original one tap away', () => {
+  const sec = pages['/es/'].match(/<section id="reviews"[\s\S]*?<\/section>/)[0];
+  for (const t of identity.testimonials) {
+    assert.ok(t.es, `${t.name} has no translation`);
+    assert.ok(sec.includes(esc(t.es)), t.name);
+    assert.ok(sec.includes(esc(t.text)), `${t.name} original kept`);
+  }
+  assert.equal((sec.match(/Traducido del inglés/g) || []).length, identity.testimonials.length);
+  assert.match(sec, /<blockquote lang="es">/);
+  assert.doesNotMatch(pages['/'].match(/<section id="reviews"[\s\S]*?<\/section>/)[0], /quote-orig/, 'English page shows the originals only');
+});
+
+test('her mark is the tab icon and sits beside her name in the header and footer', () => {
+  const svg = readFileSync(join(ROOT, 'assets', 'favicon.svg'), 'utf8');
+  assert.equal(svg, readFileSync(join(ROOT, 'assets', 'mark.svg'), 'utf8'));
+  assert.match(pages['/'], /<a class="brand"[^>]*>\s*<svg class="brand-mark"/);
+  assert.match(pages['/'], /<p class="foot-name"><svg class="foot-mark"/);
+});
+
+test('the hero carries its proof line in both languages', () => {
+  for (const lang of ['en', 'es']) for (const x of COPY[lang].hero.proof) assert.ok(pages[COPY[lang].paths.home].includes(`<li>${esc(x)}</li>`), x);
+});
+
+test('every inline mark is the drawing in assets/mark.svg', () => {
+  const paths = (svg) => [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]).join('|');
+  const mark = paths(readFileSync(join(ROOT, 'assets', 'mark.svg'), 'utf8'));
+  for (const cls of ['brand-mark', 'foot-mark']) assert.equal(paths(pages['/'].match(new RegExp(`<svg class="${cls}"[\\s\\S]*?</svg>`))[0]), mark, cls);
+});
+
+test('an area with only a name still builds, and a Spanish page says when the video is in English', () => {
+  const r = renderLanguage({ identity: { ...identity, video: { en: 'assets/video/hello.mp4', es: '' } }, listings, copy: COPY.es, all: [COPY.en, COPY.es], css: '', script: '', now: NOW, guidePdf: GUIDE_PDF, journeyImages: [], webp: {}, areas: [{ id: 'x', name: 'Apex' }] })['/es/'];
+  assert.match(r, /<h3>Apex<\/h3>/);
+  assert.match(r, /Un saludo de Margarita \(en inglés\)/);
 });

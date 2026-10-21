@@ -67,6 +67,10 @@ export function buildGraph(identity, copy, { page = 'home' } = {}) {
     ],
     alumniOf: identity.education.map((e) => ({ '@type': 'CollegeOrUniversity', name: e.name, address: e.place })),
     sameAs: identity.profiles.map((p) => p.url),
+    // Businesses she co-owns (Sequoia Builders). Its own site names her by this Person's @id in return.
+    ...((identity.ventures || []).length
+      ? { affiliation: identity.ventures.map((v) => ({ '@type': v.type || 'Organization', name: v.name, legalName: v.legalName, url: v.url })) }
+      : {}),
   };
 
   const agent = {
@@ -98,15 +102,20 @@ export function buildGraph(identity, copy, { page = 'home' } = {}) {
   };
 
   const webPage = {
-    '@type': page === 'work' ? ['WebPage', 'ContactPage'] : ['WebPage', 'ProfilePage'],
+    '@type': page === 'work' ? ['WebPage', 'ContactPage'] : page === 'home' ? ['WebPage', 'ProfilePage'] : 'WebPage',
     '@id': `${pageUrl}#webpage`,
     url: pageUrl,
-    name: page === 'work' ? copy.work.title : copy.title,
+    name: page === 'home' ? copy.title : copy[page].title,
     inLanguage: copy.htmlLang,
     isPartOf: { '@id': id.website },
     about: { '@id': id.person },
-    mainEntity: { '@id': id.person },
+    ...(page === 'privacy' ? {} : { mainEntity: { '@id': id.person } }),
   };
 
-  return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, webPage] };
+  // The FAQ printed on the home page, word for word (never answers that are not on the page).
+  const faq =
+    page === 'home' && copy.faq
+      ? [{ '@type': 'FAQPage', '@id': `${pageUrl}#faq`, inLanguage: copy.htmlLang, isPartOf: { '@id': `${pageUrl}#webpage` }, mainEntity: copy.faq.items.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }]
+      : [];
+  return { '@context': 'https://schema.org', '@graph': [person, agent, teamNode, firm, website, webPage, ...faq] };
 }

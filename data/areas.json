@@ -1,0 +1,49 @@
+{
+  "$comment": "Around the Triangle. Facts only, nothing Fair Housing protects: no school ratings, no 'safe' or 'family' areas, nothing about who lives where. 'note' is for Margarita's own words (empty = not shown). 'photo' is optional (assets/img/...); without one the card is typographic. Drive times are typical, outside rush hour.",
+  "areas": [
+    {
+      "id": "raleigh",
+      "name": "Raleigh",
+      "county": "Wake County",
+      "en": "The state capital, with a walkable downtown, NC State University and Dorothea Dix Park. Homes range from historic bungalows near downtown to newer neighborhoods inside and beyond the Beltline.",
+      "es": "La capital del estado, con un centro caminable, NC State University y Dorothea Dix Park. Hay desde casas históricas cerca del centro hasta vecindarios nuevos dentro y fuera del Beltline.",
+      "landmarks": ["Dorothea Dix Park", "NC State", "Downtown"],
+      "drive": { "en": "Home base of the Triangle", "es": "El centro del Triángulo" },
+      "note": { "en": "", "es": "" },
+      "photo": ""
+    },
+    {
+      "id": "durham",
+      "name": "Durham",
+      "county": "Durham County",
+      "en": "Home to Duke University, the American Tobacco Campus and the Durham Bulls. Older homes near downtown sit alongside newer townhomes and communities to the south.",
+      "es": "Sede de Duke University, el American Tobacco Campus y los Durham Bulls. Casas antiguas cerca del centro conviven con townhomes y comunidades nuevas hacia el sur.",
+      "landmarks": ["Duke University", "American Tobacco Campus", "Durham Bulls"],
+      "drive": { "en": "About 30 minutes to downtown Raleigh", "es": "Unos 30 minutos al centro de Raleigh" },
+      "note": { "en": "", "es": "" },
+      "photo": ""
+    },
+    {
+      "id": "cary",
+      "name": "Cary",
+      "county": "Wake County",
+      "en": "Between Raleigh and Research Triangle Park, with Downtown Cary Park and greenways throughout. Much of the housing is planned neighborhoods, many with an HOA.",
+      "es": "Entre Raleigh y Research Triangle Park, con Downtown Cary Park y senderos verdes por todas partes. Gran parte de las casas están en vecindarios planificados, muchos con HOA.",
+      "landmarks": ["Downtown Cary Park", "Greenways", "Near RTP"],
+      "drive": { "en": "About 20 minutes to downtown Raleigh", "es": "Unos 20 minutos al centro de Raleigh" },
+      "note": { "en": "", "es": "" },
+      "photo": ""
+    },
+    {
+      "id": "knightdale",
+      "name": "Knightdale",
+      "county": "Wake County",
+      "en": "East of Raleigh along US-64, with Knightdale Station Park and quick access to I-540. Homes range from established ranches to new construction.",
+      "es": "Al este de Raleigh por la US-64, con Knightdale Station Park y acceso rápido a la I-540. Hay desde casas de un piso establecidas hasta construcción nueva.",
+      "landmarks": ["Knightdale Station Park", "US-64 / I-540"],
+      "drive": { "en": "About 15 minutes to downtown Raleigh", "es": "Unos 15 minutos al centro de Raleigh" },
+      "note": { "en": "", "es": "" },
+      "photo": ""
+    }
+  ]
+}

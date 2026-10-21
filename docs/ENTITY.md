@@ -80,3 +80,9 @@ Business Profile, Zillow and Realtor.com especially) so it joins `sameAs`.
 **Wikidata.** Her son's item works because of independent press (Sun Sentinel, Miami
 Herald). Margarita has no third-party coverage, so a self-created item would be deleted.
 Revisit if she is ever written up, for example by a local paper or the HBA.
+
+## Search baseline, 19 Oct 2026
+
+Web search for "Margarita Cuesta realtor Raleigh NC" and "realtor que habla español Knightdale Raleigh Margarita": **she does not appear** (unchanged from 12 Oct; the site is not live). The Spanish query surfaces other bilingual Triangle agents (Luis Carrillo, eXp; Rocio Rojas, Choice Residential; Roxana Garcia-Rodriguez, Coldwell Banker). Re-run both after launch and monthly.
+
+Entity links in place: one Person `@id` (`/#margarita`) on every page; Sequoia Builders' site names her by that same `@id` (sequoiabuilders PR #2) and her Person lists Sequoia under `affiliation`; FAQPage on both home pages; llms.txt carries the FAQ, the toolkit and the privacy notice.

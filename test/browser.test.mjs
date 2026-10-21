@@ -172,7 +172,7 @@ test('the guide popup opens from ?guide=1 and hands over the PDF in the same cli
   await evaluate(`(() => { const f=document.querySelector('.pop-form'); f.name.value='Ana'; f.email.value='ana@example.com'; f.requestSubmit(); })()`);
   const opened = await evaluate('window.__opened');
   assert.equal(opened.length, 1);
-  assert.match(opened[0], /before-you-buy-triangle\.pdf$/);
+  assert.match(opened[0], /triangle-home-buyer-toolkit\.pdf$/);
   assert.equal(await evaluate(`document.querySelector('.pop-done').hidden`), false);
 });
 
@@ -183,4 +183,95 @@ test('a visitor from a listing who switches to selling gets the listing consulta
   await evaluate(`(() => { const f=document.querySelector('.intake'); f.querySelector('input[name=goal][value=sell]').checked=true; f.querySelector('[data-next]').click(); f.sellAddress.value='1 Main St'; f.querySelector('[data-next]').click(); f.consent.checked=true; f.dataset.api='/api/lead'; f.requestSubmit(); })()`);
   await new Promise((r) => setTimeout(r, 200));
   assert.match(await evaluate(`document.querySelector('[data-booking-link]').href`), /\/listing-consultation\?name=/);
+});
+
+const POPUP_SUBMIT = `(() => { const f=document.querySelector('.pop-form'); f.name.value='Ana'; f.email.value='ana@example.com'; f.requestSubmit(); })()`;
+
+test('with a backend, the toolkit signup is posted and confirmed; without one, the one-tap note is offered', { skip }, async () => {
+  await open('/?guide=1');
+  await evaluate(`document.getElementById('guide').dataset.api='/api/subscribe'`);
+  await evaluate(POPUP_SUBMIT);
+  await new Promise((r) => setTimeout(r, 200));
+  const posts = await evaluate('window.__posts');
+  assert.equal(posts.length, 1);
+  assert.deepEqual([posts[0].body.email, posts[0].body.source], ['ana@example.com', 'link']);
+  assert.equal(await evaluate(`document.querySelector('[data-saved]').hidden`), false);
+  assert.equal(await evaluate(`document.querySelector('[data-note]').hidden`), true);
+
+  await open('/es/?guide=1');
+  await evaluate(`document.getElementById('guide').dataset.api=''`);
+  await evaluate(POPUP_SUBMIT);
+  assert.equal((await evaluate('window.__posts')).length, 0);
+  assert.equal(await evaluate(`document.querySelector('[data-note]').hidden`), false);
+  assert.match(await evaluate(`document.querySelector('[data-note-mail]').href`), /Ana%20%3Cana%40example\.com%3E/);
+});
+
+test('a failed signup says so and offers the note, instead of claiming success', { skip }, async () => {
+  await open('/?guide=1');
+  await evaluate(`window.fetch=function(){return Promise.resolve({ok:false})}; document.getElementById('guide').dataset.api='/api/subscribe'`);
+  await evaluate(POPUP_SUBMIT);
+  await new Promise((r) => setTimeout(r, 200));
+  assert.equal(await evaluate(`document.querySelector('[data-saved]').hidden`), true);
+  assert.equal(await evaluate(`document.querySelector('[data-failed]').hidden`), false);
+});
+
+test('"Not now" closes the window and keeps it quiet for a week; having the toolkit keeps it quiet for good', { skip }, async () => {
+  await open('/?guide=1');
+  await evaluate(`localStorage.clear(); document.querySelector('.pop-actions [data-close]').click()`);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(await evaluate(`document.getElementById('guide').open`), false);
+  const days = await evaluate(`(+localStorage.getItem('mc-guide-quiet') - Date.now()) / 864e5`);
+  assert.ok(days > 6.9 && days <= 7, String(days));
+  await evaluate(`document.querySelector('[data-open-guide]').click(); document.querySelector('[data-already]').click()`);
+  assert.ok(await evaluate(`!!localStorage.getItem('mc-guide-done')`));
+  await evaluate(`localStorage.clear()`);
+});
+
+test('the welcome window opens by itself after 20 seconds of attention on the home page only', { skip }, async () => {
+  await open('/');
+  await evaluate(`localStorage.clear(); sessionStorage.clear(); sessionStorage.setItem('mc-attention','19')`);
+  await open('/');
+  await new Promise((r) => setTimeout(r, 1600));
+  assert.equal(await evaluate(`document.getElementById('guide').open`), true);
+  await evaluate(`sessionStorage.clear()`);
+  await open('/work-with-me/');
+  await evaluate(`sessionStorage.setItem('mc-attention','19')`);
+  await open('/work-with-me/');
+  await new Promise((r) => setTimeout(r, 1600));
+  assert.equal(await evaluate(`document.getElementById('guide').open`), false);
+  await evaluate(`sessionStorage.clear(); localStorage.clear()`);
+});
+
+test('an intake that could not be sent says "almost done", never "I have your plans"', { skip }, async () => {
+  await open('/work-with-me/?goal=sell');
+  await evaluate(`window.fetch=function(){return Promise.resolve({ok:false})}; location.assign=function(){}`);
+  await evaluate(FILL_STEP1);
+  for (let i = 0; i < 2; i++) await evaluate(`document.querySelector('.intake [data-next]').click()`);
+  await evaluate(`(() => { const f=document.querySelector('.intake'); f.sellAddress.value='1 Main St'; f.querySelector('[data-next]').click(); f.consent.checked=true; f.dataset.api='/api/lead'; f.requestSubmit(); f.requestSubmit(); })()`);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(await evaluate(`document.querySelector('[data-done-title]').textContent`), 'Almost done: send me your answers.');
+  assert.equal(await evaluate(`document.querySelector('[data-fallback]').hidden`), false);
+});
+
+test('an unsent intake never launches the mail app by itself; the visitor taps to send', { skip }, async () => {
+  await open('/work-with-me/?goal=sell');
+  await evaluate(FILL_STEP1);
+  for (let i = 0; i < 2; i++) await evaluate(`document.querySelector('.intake [data-next]').click()`);
+  const before = await evaluate('location.href');
+  await evaluate(`(() => { const f=document.querySelector('.intake'); f.sellAddress.value='1 Main St'; f.querySelector('[data-next]').click(); f.consent.checked=true; f.dataset.api=''; f.requestSubmit(); })()`);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(await evaluate('location.href'), before);
+  assert.match(await evaluate(`document.querySelector('[data-send-email]').href`), /^mailto:/);
+});
+
+test('a listing thumbnail swaps the large photo and says which one is showing', { skip }, async () => {
+  await open('/');
+  await evaluate(`document.querySelectorAll('.feature .thumb')[1].click()`);
+  assert.match(await evaluate(`document.querySelector('[data-main]').src`), /mailwood-2-\d+\.webp$/);
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('.feature .thumb')].map(t=>t.getAttribute('aria-pressed'))`), ['false', 'true', 'false']);
+});
+
+test('an Around the Triangle link starts the intake with that area filled in', { skip }, async () => {
+  await open('/work-with-me/?goal=buy&area=Cary');
+  assert.equal(await evaluate(`document.querySelector('.intake').areas.value`), 'Cary');
 });

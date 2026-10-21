@@ -130,25 +130,29 @@
     {
       "name": "J. Garcia",
       "lang": "en",
-      "text": "Working with Margarita and her team was amazing. They took care of me and my family since the beginning. They walked me through the process of getting my first house. They were available all the time for me. We went to see the house different times throughout the process and Margarita always was available for me. After closing all the process and I was officially the owner of the house, they kept in touch with me just to make sure everything was ok with the house. I really recommend them for any first time home buyers."
+      "text": "Working with Margarita and her team was amazing. They took care of me and my family since the beginning. They walked me through the process of getting my first house. They were available all the time for me. We went to see the house different times throughout the process and Margarita always was available for me. After closing all the process and I was officially the owner of the house, they kept in touch with me just to make sure everything was ok with the house. I really recommend them for any first time home buyers.",
+      "es": "Trabajar con Margarita y su equipo fue increíble. Nos atendieron a mí y a mi familia desde el principio. Me guiaron en el proceso de comprar mi primera casa. Siempre estuvieron disponibles para mí. Fuimos a ver la casa varias veces durante el proceso y Margarita siempre estuvo disponible. Después de terminar todo el proceso, cuando la casa ya era oficialmente mía, siguieron en contacto conmigo solo para asegurarse de que todo estuviera bien con la casa. Los recomiendo de verdad a quien vaya a comprar su primera casa."
     },
     {
       "name": "I. Velasquez",
       "lang": "en",
-      "text": "Responsibility, discipline, patience, perseverance, and genuine human quality, among many other virtues, are what define this investment group. I truly don’t have enough words to thank you for making this process such an excellent experience for me and my family. We are very happy with our new home and filled with deep gratitude. Margarita and her team are the best!"
+      "text": "Responsibility, discipline, patience, perseverance, and genuine human quality, among many other virtues, are what define this investment group. I truly don’t have enough words to thank you for making this process such an excellent experience for me and my family. We are very happy with our new home and filled with deep gratitude. Margarita and her team are the best!",
+      "es": "Responsabilidad, disciplina, paciencia, perseverancia y una genuina calidad humana, entre muchas otras virtudes, son lo que define a este grupo de inversión. De verdad no tengo palabras suficientes para agradecerles por hacer de este proceso una experiencia tan excelente para mí y mi familia. Estamos muy felices con nuestra nueva casa y llenos de profunda gratitud. ¡Margarita y su equipo son los mejores!"
     },
     {
       "name": "G. Vanegas",
       "lang": "en",
-      "text": "With Margarita and her team you get the best in North Carolina. I recommend them 100 percent, and I truly recommend them with pleasure."
+      "text": "With Margarita and her team you get the best in North Carolina. I recommend them 100 percent, and I truly recommend them with pleasure.",
+      "es": "Con Margarita y su equipo tiene lo mejor de Carolina del Norte. Los recomiendo cien por ciento, y los recomiendo de verdad con mucho gusto."
     },
     {
       "name": "S. G. Rodriguez",
       "lang": "en",
-      "text": "So many good things to say, everyone there was so helpful throughout my first home buying process. My real estate agent Margarita was great, quick to answer, always communicated with me throughout the whole process! Super thankful to this team!"
+      "text": "So many good things to say, everyone there was so helpful throughout my first home buying process. My real estate agent Margarita was great, quick to answer, always communicated with me throughout the whole process! Super thankful to this team!",
+      "es": "Tengo tantas cosas buenas que decir; todos fueron muy serviciales durante el proceso de comprar mi primera casa. Mi agente de bienes raíces, Margarita, fue excelente: respondía rápido y siempre se comunicó conmigo durante todo el proceso. ¡Mil gracias a este equipo!"
     }
   ],
-  "testimonialsSource": "Margarita's listing presentation (Canva), past client testimonials. Emoji removed; one doubled word fixed.",
+  "testimonialsSource": "Margarita's listing presentation (Canva), past client testimonials. Emoji removed; one doubled word fixed. Spanish versions are translations (marked as such on /es/); Margarita to approve.",
   "ventures": [
     {
       "id": "sequoia",
@@ -159,7 +163,14 @@
         "es": "Copropietaria"
       },
       "url": "https://danieljcuesta007.github.io/sequoiabuilders-preview/",
-      "$comment": "Preview URL until Sequoia has its own domain. Repo: ~/sequoiabuilders."
+      "type": "HomeAndConstructionBusiness",
+      "summary": "a family home builder in the Triangle",
+      "$comment": "Preview URL until Sequoia has its own domain. Repo: ~/sequoiabuilders. Its schema names Margarita by this site's #margarita @id."
     }
-  ]
+  ],
+  "video": {
+    "$comment": "Her hello video. Empty = a \"coming soon\" frame on the About section. A path in assets/ (mp4) or a full https URL to an mp4.",
+    "en": "",
+    "es": ""
+  }
 }
