@@ -13,9 +13,9 @@ case "$NAME" in *-preview) ;; *) echo "Refusing: $NAME is not a *-preview projec
 WRANGLER=(npx --yes wrangler@4.112.0)
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 node src/build.mjs "$TMP/site" --preview
-if ! "${WRANGLER[@]}" pages project list 2>/dev/null | grep -q "│ $NAME "; then
-  "${WRANGLER[@]}" pages project create "$NAME" --production-branch main >/dev/null
-fi
+# First run creates the project; later runs fail here harmlessly ("already exists"). A real
+# problem (no login, wrong account) still stops the deploy below with wrangler's own error.
+"${WRANGLER[@]}" pages project create "$NAME" --production-branch main >/dev/null 2>&1 || true
 "${WRANGLER[@]}" pages deploy "$TMP/site" --project-name "$NAME" --branch main \
   --commit-hash "$(git rev-parse HEAD 2>/dev/null || echo local)" --commit-dirty=true >/dev/null
 echo "Preview: https://$NAME.pages.dev/"
