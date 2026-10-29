@@ -109,8 +109,8 @@ test('build CLI accepts --base=/x and --base /x, and rejects anything else', () 
   assert.throws(() => parseArgs(['a', 'b']), /Two output folders/);
 });
 
-test('publish-preview.sh refuses any repo not named *-preview', () => {
-  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_REPO: 'someone/margaritaturealtor.com' }, encoding: 'utf8' });
+test('publish-preview.sh refuses any project not named *-preview', () => {
+  const r = spawnSync('bash', [join(ROOT, 'scripts', 'publish-preview.sh')], { env: { ...process.env, PREVIEW_PROJECT: 'margaritaturealtor' }, encoding: 'utf8' });
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /Refusing/);
 });
@@ -139,7 +139,7 @@ test('every local file a page references exists in the build', () => {
   }
 });
 
-test('a GitHub Pages preview prefixes every internal link and is never indexed', () => {
+test('a preview under a base path prefixes every internal link and is never indexed', () => {
   const dir = tmp('mc-preview-');
   const { pages: p } = build({ outDir: dir, root: ROOT, identity, listings, now: NOW, base: '/margaritaturealtor-preview', preview: true });
   for (const html of Object.values(p)) {
@@ -148,6 +148,13 @@ test('a GitHub Pages preview prefixes every internal link and is never indexed',
   }
   assert.match(readFileSync(join(dir, 'robots.txt'), 'utf8'), /Disallow: \//);
   assert.doesNotMatch(pages['/'], /noindex/);
+});
+
+test('a preview sends a noindex header on every file; the real build does not', () => {
+  const dir = tmp('mc-preview-');
+  build({ outDir: dir, root: ROOT, identity, listings, now: NOW, preview: true });
+  assert.match(readFileSync(join(dir, '_headers'), 'utf8'), /^\/\*\n  X-Robots-Tag: noindex, nofollow\n/);
+  assert.doesNotMatch(readFileSync(join(out, '_headers'), 'utf8'), /noindex/);
 });
 
 test('the free guide exists as a real PDF in both languages, and both say the same number of things', () => {
