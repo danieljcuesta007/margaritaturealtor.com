@@ -20,12 +20,13 @@ The welcome window is modelled on the W.O.W signup prompt: once per visit on the
 after 20 seconds of attention, 55% down the page or on exit intent; never while someone is
 typing; quiet for 7, 30, then 90 days after "Not now"; never again once they have the toolkit.
 
-**Preview:** https://danieljcuesta007.github.io/margaritaturealtor-preview/ (not indexed).
+**Preview:** https://margaritaturealtor-preview.pages.dev/ (not indexed; published from this repo).
 
 ## Requirements
 
 - Node 18 or newer (22+ for the browser tests, which also need Google Chrome and skip without it). No packages to install.
 - Python 3 (preinstalled on macOS) only for the local preview server.
+- Only to publish the preview: `npx` (comes with Node) and a Cloudflare login (`npx wrangler login`).
 - Optional, only to regenerate photo sizes (`scripts/make-webp.sh`): `cwebp` (libwebp) and macOS `sips`. Without them the committed WebP files keep working, and a missing one falls back to the JPEG.
 - Only to regenerate the share image (`scripts/make-images.sh`): Google Chrome and macOS's
   built-in `sips`. On Linux, screenshot `scripts/og.html` (1200x630) and `assets/mark.svg` on white
@@ -40,7 +41,7 @@ python3 -m http.server 8765 -d dist   # preview at http://localhost:8765
 ./scripts/make-images.sh              # regenerate the share card and touch icon
 ./scripts/make-webp.sh                # right-sized WebP copies of the photos (after adding a photo)
 node scripts/make-guide.mjs           # regenerate the toolkit PDFs (needs Chrome)
-./scripts/publish-preview.sh          # push a noindex preview to GitHub Pages
+./scripts/publish-preview.sh          # publish a noindex preview to Cloudflare Pages (needs a wrangler login)
 ```
 
 `npm run build`, `npm test` and `npm run serve` are shortcuts for the same commands.

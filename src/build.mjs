@@ -3,7 +3,8 @@
  * Builds the static site into dist/. Node standard library only.
  *
  *   node src/build.mjs                         -> ./dist for the real domain
- *   node src/build.mjs --preview --base=/name  -> a noindex preview for GitHub Pages at /name/
+ *   node src/build.mjs --preview              -> a noindex preview (Cloudflare Pages)
+ *   node src/build.mjs --preview --base=/name  -> the same, served under /name/
  *   node src/build.mjs some/dir                -> into some/dir
  */
 import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync, existsSync, readdirSync } from 'node:fs';
@@ -140,7 +141,8 @@ export function build({
   writeFileSync(join(outDir, '.nojekyll'), '');
   writeFileSync(
     join(outDir, '_headers'),
-    `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=86400, stale-while-revalidate=604800\n`,
+    // A preview also sends noindex on every file (PDFs and images included), not just the pages.
+    `/*\n${preview ? '  X-Robots-Tag: noindex, nofollow\n' : ''}  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Frame-Options: DENY\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=86400, stale-while-revalidate=604800\n`,
   );
   return { outDir, pages, sitemap };
 }
